@@ -1,0 +1,24 @@
+# SYNTHETIC SMOKE DATA — not production gold, not a real held-out set, no customer PII.
+# Labels are illustrative prototypes of the 10 known issue classes for wiring the eval harness.
+# Swap this file for a real labeled CSV later (see eval/README.md).
+id,text,issue,sentiment,urgency
+s01,"Please reverse the Airtel Money payment I sent to the wrong number this morning.",Airtel_Money_Reversal,negative,emergency
+s02,"I paid the wrong till with Airtel Money. Kindly reverse it back to my wallet.",Airtel_Money_Reversal,negative,medium
+s03,"I sent Airtel Money to my sister but it has not arrived after thirty minutes.",Airtel_Money_Transfer,negative,emergency
+s04,"Airtel Money left my wallet but the agent says the cash-out never came through.",Airtel_Money_Transfer,negative,emergency
+s05,"I completed the app rewards challenge but the free bundle was never credited.",App_Rewards,negative,medium
+s06,"The promotional points in the Airtel app expired before I could redeem them.",App_Rewards,negative,low
+s07,"An agent hung up on me three times and nobody has called back about my ticket.",Complaint_General,negative,medium
+s08,"This is a general complaint about rude service at the shop yesterday afternoon.",Complaint_General,negative,medium
+s09,"My data bundle vanished overnight even though I still had two gigabytes left.",Data_Bundle_Problems,negative,emergency
+s10,"I was charged for a weekly bundle that I did not subscribe to on this line.",Data_Bundle_Problems,negative,medium
+s11,"There is no 4G coverage at home since yesterday and calls keep dropping.",Network_Issues,negative,emergency
+s12,"Internet is extremely slow after midnight and pages do not load at all.",Network_Issues,negative,medium
+s13,"Thank you, the bundle you credited yesterday is working well now.",Non_Actionable,not_negative,low
+s14,"No action needed from your side, I was only confirming the line is active.",Non_Actionable,not_negative,low
+s15,"What is the price of the weekly two gigabyte bundle on prepaid?",Product_Enquiry,not_negative,low
+s16,"How do I register for Airtel Money and which documents are required?",Product_Enquiry,not_negative,low
+s17,"My home 5G router has a red light and the WiFi SSID is not broadcasting.",Router_WiFi_5G,negative,emergency
+s18,"The indoor 5G CPE keeps dropping WiFi every few minutes since this morning.",Router_WiFi_5G,negative,medium
+s19,"My SIM is damaged and I cannot receive SMS. I need a replacement on the same number.",SIM_Line_Services,negative,emergency
+s20,"Please bar this line immediately, I lost the handset on the bus this afternoon.",SIM_Line_Services,negative,emergency
