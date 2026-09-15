@@ -30,6 +30,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const texts = useMemo(
@@ -44,10 +45,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
     setError(null);
   }
 
-  function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  function loadFile(file: File) {
     setFileName(file.name);
     resetResults();
     setNotice(null);
@@ -90,8 +88,13 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
     });
   }
 
+  function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) loadFile(file);
+  }
+
   async function classifyAll() {
-    if (busy || !column || rows.length === 0) return;
+    if (busy || disabled || !column || rows.length === 0) return;
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -164,28 +167,56 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
   }
 
   const classifiedCount = results.filter((r) => r.prediction).length;
+  const progressPct =
+    progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
 
   return (
     <div className="space-y-5">
       <div>
-        <label htmlFor="csv" className="block text-sm font-medium text-slate-800">
+        <label htmlFor="csv" className="block text-sm font-medium text-ink">
           CSV file
         </label>
-        <input
-          id="csv"
-          type="file"
-          accept=".csv,text/csv"
-          onChange={handleFile}
-          disabled={disabled || busy}
-          className="mt-1 block w-full cursor-pointer rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100"
-        />
-        <p className="mt-1 text-xs text-slate-500">
-          Parsed in the browser with PapaParse. The first row must contain column headers.
-        </p>
+        <div
+          className={`mt-2 rounded-2xl border border-dashed p-4 transition-colors sm:p-5 ${
+            dragOver ? "border-accent bg-accent/8" : "border-line bg-canvas/40"
+          }`}
+          onDragOver={(event) => {
+            event.preventDefault();
+            if (!busy) setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragOver(false);
+            if (busy) return;
+            const file = event.dataTransfer.files?.[0];
+            if (file) loadFile(file);
+          }}
+        >
+          <input
+            id="csv"
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleFile}
+            disabled={busy}
+            className="block w-full cursor-pointer text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-ink file:px-3 file:py-2 file:text-sm file:font-semibold file:text-canvas hover:file:bg-white disabled:cursor-not-allowed"
+          />
+          <p className="mt-2 text-xs leading-relaxed text-muted">
+            Drop a file here or choose one. Parsed in the browser with PapaParse. The first row
+            must contain column headers.
+            {fileName ? (
+              <>
+                {" "}
+                Loaded{" "}
+                <span className="font-medium text-ink">{fileName}</span>.
+              </>
+            ) : null}
+          </p>
+        </div>
       </div>
 
       {notice && (
-        <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+        <p className="rounded-2xl border border-amber-400/30 bg-amber-400/8 p-4 text-sm text-amber-50/90">
           {notice}
         </p>
       )}
@@ -193,7 +224,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
       {headers.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div>
-            <label htmlFor="column" className="block text-sm font-medium text-slate-800">
+            <label htmlFor="column" className="block text-sm font-medium text-ink">
               Which column holds the message text?
             </label>
             <select
@@ -204,7 +235,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
                 resetResults();
               }}
               disabled={busy}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none disabled:bg-slate-100"
+              className="field mt-2 py-2.5"
             >
               {headers.map((header) => (
                 <option key={header} value={header}>
@@ -212,28 +243,27 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-slate-500">
-              {fileName} &middot; {rows.length} row(s) parsed &middot; {nonEmptyCount}{" "}
-              non-empty in &ldquo;{column}&rdquo; &middot; sent in chunks of{" "}
-              {BATCH_CHUNK_SIZE}
+            <p className="mt-2 text-xs text-muted">
+              {fileName} · {rows.length} row(s) parsed · {nonEmptyCount} non-empty in “{column}” ·
+              sent in chunks of {BATCH_CHUNK_SIZE}
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={classifyAll}
+              onClick={() => void classifyAll()}
               disabled={disabled || busy || nonEmptyCount === 0}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+              className="btn-primary"
             >
-              {busy && <Spinner className="h-4 w-4 text-white" />}
-              {busy ? "Classifying..." : `Classify ${nonEmptyCount} row(s)`}
+              {busy && <Spinner className="h-4 w-4 text-current" />}
+              {busy ? "Classifying…" : `Classify ${nonEmptyCount} row(s)`}
             </button>
             {busy && (
               <button
                 type="button"
                 onClick={() => abortRef.current?.abort()}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                className="btn-secondary"
               >
                 Cancel
               </button>
@@ -242,8 +272,30 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
         </div>
       )}
 
+      {disabled && (
+        <p className="text-xs text-muted">
+          Classification is unavailable until the API URL is set. You can still parse a CSV and
+          pick a column.
+        </p>
+      )}
+
       {busy && (
-        <LoadingState detail={`Row ${progress.completed} of ${progress.total} classified`} />
+        <div className="space-y-3">
+          <LoadingState detail={`Row ${progress.completed} of ${progress.total} classified`} />
+          <div
+            className="h-1.5 overflow-hidden rounded-full bg-white/10"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPct}
+            aria-label="Batch classification progress"
+          >
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-300"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
       )}
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
@@ -251,31 +303,32 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
       {results.length > 0 && (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-600">
-              {classifiedCount} of {results.length} row(s) classified
+            <p className="text-sm text-muted">
+              <span className="font-medium text-ink">{classifiedCount}</span> of {results.length}{" "}
+              row(s) classified
             </p>
             <button
               type="button"
               onClick={downloadCsv}
               disabled={classifiedCount === 0}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400"
+              className="btn-secondary"
             >
               Download results as CSV
             </button>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-100">
-                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  <th className="px-3 py-2">#</th>
-                  <th className="min-w-[18rem] px-3 py-2">Message</th>
-                  <th className="px-3 py-2">Issue</th>
-                  <th className="px-3 py-2">Sentiment</th>
-                  <th className="px-3 py-2">Urgency</th>
+          <div className="overflow-x-auto rounded-2xl border border-line">
+            <table className="min-w-full divide-y divide-line text-sm">
+              <thead className="sticky top-0 bg-surface-2">
+                <tr className="text-left text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">
+                  <th className="px-3 py-3">#</th>
+                  <th className="min-w-[18rem] px-3 py-3">Message</th>
+                  <th className="px-3 py-3">Issue</th>
+                  <th className="px-3 py-3">Sentiment</th>
+                  <th className="px-3 py-3">Urgency</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line/80">
                 {results.map((result) => {
                   const tone = urgencyTone(result.prediction?.urgency);
                   const score = formatScore(result.prediction?.urgency_score);
@@ -287,42 +340,48 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
                   );
 
                   return (
-                    <tr key={result.index} className="align-top">
-                      <td className="px-3 py-2 text-xs text-slate-400">{result.index + 1}</td>
-                      <td className="max-w-md px-3 py-2 text-slate-800" title={result.text}>
-                        <span className="line-clamp-3 block">{result.text || "-"}</span>
+                    <tr key={result.index} className="align-top hover:bg-white/[0.02]">
+                      <td className="px-3 py-3 font-mono text-xs tabular-nums text-muted">
+                        {result.index + 1}
+                      </td>
+                      <td className="max-w-md px-3 py-3 text-ink/90" title={result.text}>
+                        <span className="line-clamp-3 block">{result.text || "—"}</span>
                       </td>
 
                       {result.prediction ? (
                         <>
-                          <td className="px-3 py-2 text-slate-800">
+                          <td className="px-3 py-3 text-ink">
                             {result.prediction.issue}
                             {issueConfidence && (
-                              <span className="block text-xs text-slate-500">
+                              <span className="mt-0.5 block font-mono text-xs text-muted">
                                 {issueConfidence}
                               </span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-slate-800">
+                          <td className="px-3 py-3 text-ink">
                             {result.prediction.sentiment}
                             {sentimentConfidence && (
-                              <span className="block text-xs text-slate-500">
+                              <span className="mt-0.5 block font-mono text-xs text-muted">
                                 {sentimentConfidence}
                               </span>
                             )}
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-3">
                             <span
-                              className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${URGENCY_STYLES[tone].badge}`}
+                              className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${URGENCY_STYLES[tone].badge}`}
                             >
                               {result.prediction.urgency}
                             </span>
-                            {score && <span className="block text-xs text-slate-500">{score}</span>}
+                            {score && (
+                              <span className="mt-0.5 block font-mono text-xs text-muted">
+                                {score}
+                              </span>
+                            )}
                           </td>
                         </>
                       ) : (
-                        <td colSpan={3} className="px-3 py-2 text-xs text-slate-500">
-                          {result.error ?? (busy ? "Queued..." : "Not classified")}
+                        <td colSpan={3} className="px-3 py-3 text-xs text-muted">
+                          {result.error ?? (busy ? "Queued…" : "Not classified")}
                         </td>
                       )}
                     </tr>
