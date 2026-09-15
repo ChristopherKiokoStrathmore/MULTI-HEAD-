@@ -24,34 +24,35 @@ interface ToneStyle {
 /**
  * Full literal class strings so the Tailwind scanner can see every candidate.
  * low = slate, medium = amber, emergency = Airtel red (#EC1B24).
+ * Tuned for white sheets on the red canvas.
  */
 export const URGENCY_STYLES: Record<UrgencyTone, ToneStyle> = {
   low: {
     card: "",
     value: "text-ink",
-    badge: "bg-white/8 text-ink/80",
+    badge: "bg-black/6 text-ink/80",
     cell: "text-muted",
     bar: "bg-[#8e8e93]",
   },
   medium: {
     card: "",
-    value: "text-amber-200",
-    badge: "bg-amber-400/12 text-amber-100",
-    cell: "text-amber-200 font-medium",
-    bar: "bg-amber-400",
+    value: "text-amber-700",
+    badge: "bg-amber-100 text-amber-800",
+    cell: "text-amber-800 font-medium",
+    bar: "bg-amber-500",
   },
   emergency: {
-    card: "ring-1 ring-accent/35",
+    card: "ring-1 ring-accent/25",
     value: "text-accent",
-    badge: "bg-accent/12 text-red-100",
+    badge: "bg-accent/10 text-accent",
     cell: "text-accent font-semibold",
     bar: "bg-accent",
   },
   unknown: {
-    card: "ring-1 ring-white/15",
+    card: "ring-1 ring-black/10",
     value: "text-ink",
-    badge: "bg-transparent text-muted ring-1 ring-white/15",
+    badge: "bg-transparent text-muted ring-1 ring-black/10",
     cell: "text-muted",
-    bar: "bg-[#636366]",
+    bar: "bg-[#a1a1a6]",
   },
 };

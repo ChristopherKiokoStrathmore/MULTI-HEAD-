@@ -20,10 +20,10 @@ function ConfidenceBar({
     <div className="mt-5">
       <div className="flex items-baseline justify-between gap-3 text-[11px] text-muted">
         <span>{label}</span>
-        <span className="font-mono tabular-nums text-ink/75">{text}</span>
+        <span className="font-mono tabular-nums text-ink/70">{text}</span>
       </div>
       <div
-        className="mt-2 h-1 overflow-hidden rounded-full bg-white/8"
+        className="mt-2 h-1 overflow-hidden rounded-full bg-black/8"
         role="meter"
         aria-label={label}
         aria-valuemin={0}
@@ -50,7 +50,7 @@ function Card({
   children?: ReactNode;
 }) {
   return (
-    <article className="px-5 py-6 sm:px-7">
+    <article className="px-1 py-5 sm:px-6 sm:py-6">
       <p className="text-[12px] font-medium text-muted">{label}</p>
       <p className={`mt-2 text-[1.35rem] leading-tight font-semibold tracking-tight break-words ${valueClass}`}>
         {value || "—"}
@@ -68,15 +68,15 @@ export default function PredictionCards({ prediction }: { prediction: Prediction
 
   return (
     <div
-      className={`reveal overflow-hidden rounded-[1.4rem] bg-surface ${styles.card}`}
+      className={`reveal overflow-hidden rounded-[1.25rem] bg-surface-2 ${styles.card}`}
       aria-live="polite"
     >
-      <div className="grid sm:grid-cols-3 sm:divide-x sm:divide-white/8">
+      <div className="grid sm:grid-cols-3 sm:divide-x sm:divide-black/8">
         <Card label="Issue" value={formatLabel(prediction.issue)}>
           <ConfidenceBar value={prediction.confidence?.issue} barClass="bg-ink" />
         </Card>
         <Card label="Sentiment" value={formatLabel(prediction.sentiment)}>
-          <ConfidenceBar value={prediction.confidence?.sentiment} barClass="bg-ink/70" />
+          <ConfidenceBar value={prediction.confidence?.sentiment} barClass="bg-ink/60" />
         </Card>
         <Card
           label="Urgency"

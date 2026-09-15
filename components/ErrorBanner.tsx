@@ -6,7 +6,7 @@ export default function ErrorBanner({
   onDismiss?: () => void;
 }) {
   return (
-    <div className="rounded-[1.2rem] bg-surface ring-1 ring-accent/30" role="alert">
+    <div className="rounded-[1.15rem] bg-[#fff5f5] ring-1 ring-accent/20" role="alert">
       <div className="flex items-start justify-between gap-4 px-5 py-4 sm:px-6">
         <div className="min-w-0">
           <p className="text-[13px] font-medium text-accent">Request failed</p>

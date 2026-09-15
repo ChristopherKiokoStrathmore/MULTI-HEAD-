@@ -21,7 +21,11 @@ export default function LoadingState({ detail }: { detail?: string }) {
   }, []);
 
   return (
-    <div className="flex items-start gap-3 rounded-[1.2rem] bg-surface px-5 py-4" role="status" aria-live="polite">
+    <div
+      className="flex items-start gap-3 rounded-[1.15rem] bg-surface-2 px-5 py-4"
+      role="status"
+      aria-live="polite"
+    >
       <Spinner className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
       <div className="min-w-0 text-[14px]">
         <p className="font-medium tracking-tight text-ink">
@@ -29,8 +33,7 @@ export default function LoadingState({ detail }: { detail?: string }) {
         </p>
         <p className="mt-1 text-muted">
           {detail ? `${detail} · ` : ""}
-          Elapsed{" "}
-          <span className="font-mono tabular-nums text-ink/80">{seconds}s</span>
+          Elapsed <span className="font-mono tabular-nums text-ink/80">{seconds}s</span>
         </p>
       </div>
     </div>

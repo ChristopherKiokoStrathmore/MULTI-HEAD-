@@ -2,7 +2,7 @@ import { MISSING_ENV_MESSAGE } from "@/lib/api";
 
 export default function ConfigNotice() {
   return (
-    <section className="rounded-[1.2rem] bg-surface px-5 py-5 sm:px-6" role="status" aria-live="polite">
+    <section className="sheet" role="status" aria-live="polite">
       <p className="text-[15px] font-medium tracking-tight text-ink">Model API URL is not configured</p>
       <p className="mt-2 text-[14px] leading-relaxed text-muted">
         Set <code className="font-mono text-[13px] text-ink/80">NEXT_PUBLIC_API_URL</code> to the API{" "}
