@@ -17,18 +17,11 @@ const HEALTH_LABEL: Record<HealthStatus, string> = {
   unreachable: "Warm-up did not answer",
 };
 
-const HEALTH_STYLE: Record<HealthStatus, string> = {
-  unknown: "border-line bg-surface-2 text-muted",
-  warming: "border-sky-400/30 bg-sky-400/10 text-sky-100",
-  ready: "border-accent/30 bg-accent/10 text-accent",
-  unreachable: "border-amber-400/30 bg-amber-400/10 text-amber-100",
-};
-
 const HEALTH_DOT: Record<HealthStatus, string> = {
-  unknown: "bg-slate-400",
-  warming: "bg-sky-300 animate-pulse",
-  ready: "bg-accent",
-  unreachable: "bg-amber-400",
+  unknown: "bg-white/50",
+  warming: "bg-white animate-pulse",
+  ready: "bg-emerald-300",
+  unreachable: "bg-amber-300",
 };
 
 export default function ClassifierApp() {
@@ -64,9 +57,9 @@ export default function ClassifierApp() {
     <div className="space-y-6">
       {!apiReady && <ConfigNotice />}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div
-          className="inline-flex w-fit rounded-xl border border-line bg-surface p-1"
+          className="inline-flex w-fit rounded-full bg-white/15 p-1"
           role="tablist"
           aria-label="Input mode"
         >
@@ -96,10 +89,10 @@ export default function ClassifierApp() {
                     (next === "single" ? singleTabRef : csvTabRef).current?.focus();
                   }
                 }}
-                className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-full px-4 py-2 text-[13px] font-medium tracking-tight transition-colors ${
                   selected
-                    ? "bg-ink text-canvas shadow-sm"
-                    : "text-muted hover:bg-surface-2 hover:text-ink"
+                    ? "bg-white text-accent shadow-sm"
+                    : "text-white/80 hover:text-white"
                 }`}
               >
                 {label}
@@ -110,7 +103,7 @@ export default function ClassifierApp() {
 
         {apiReady ? (
           <span
-            className={`inline-flex items-center gap-2 self-start rounded-full border px-3 py-1.5 text-xs font-medium ${HEALTH_STYLE[health]}`}
+            className="inline-flex items-center gap-2 self-start text-[12px] text-white/80"
             title={API_BASE}
           >
             {(health === "warming" || health === "unknown") && (
@@ -122,28 +115,23 @@ export default function ClassifierApp() {
             {HEALTH_LABEL[health]}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-2 self-start rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-medium text-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-500" aria-hidden="true" />
+          <span className="inline-flex items-center gap-2 self-start text-[12px] text-white/80">
+            <span className="h-1.5 w-1.5 rounded-full bg-white/50" aria-hidden="true" />
             API URL not set
           </span>
         )}
       </div>
 
       {health === "unreachable" && (
-        <p className="rounded-2xl border border-amber-400/30 bg-amber-400/8 p-4 text-sm leading-relaxed text-amber-50/90">
+        <p className="max-w-2xl text-[14px] leading-relaxed text-white/85">
           The warm-up call to{" "}
-          <code className="font-mono text-[13px] text-amber-50">{API_BASE}/health</code> did not
+          <code className="font-mono text-[13px] text-white">{API_BASE}/health</code> did not
           succeed. You can still classify — the first request will simply carry the full cold
           start, and any real error will be shown in full below.
         </p>
       )}
 
-      <section
-        id={`panel-${mode}`}
-        role="tabpanel"
-        aria-labelledby={`tab-${mode}`}
-        className="panel rounded-2xl p-5 sm:p-7"
-      >
+      <section id={`panel-${mode}`} role="tabpanel" aria-labelledby={`tab-${mode}`} className="sheet">
         {mode === "single" ? (
           <SingleMode disabled={!apiReady} />
         ) : (

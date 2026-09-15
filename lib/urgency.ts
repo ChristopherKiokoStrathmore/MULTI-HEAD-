@@ -15,6 +15,7 @@ export function urgencyTone(raw: string | null | undefined): UrgencyTone {
 
 interface ToneStyle {
   card: string;
+  value: string;
   badge: string;
   cell: string;
   bar: string;
@@ -22,31 +23,36 @@ interface ToneStyle {
 
 /**
  * Full literal class strings so the Tailwind scanner can see every candidate.
- * low = slate, medium = amber, emergency = red — tuned for the dark canvas.
+ * low = slate, medium = amber, emergency = Airtel red (#EC1B24).
+ * Tuned for white sheets on the red canvas.
  */
 export const URGENCY_STYLES: Record<UrgencyTone, ToneStyle> = {
   low: {
-    card: "border-slate-500/40 bg-slate-500/10",
-    badge: "bg-slate-400/15 text-slate-200 ring-1 ring-slate-400/30",
-    cell: "text-slate-300",
-    bar: "bg-slate-400",
+    card: "",
+    value: "text-ink",
+    badge: "bg-black/6 text-ink/80",
+    cell: "text-muted",
+    bar: "bg-[#8e8e93]",
   },
   medium: {
-    card: "border-amber-400/45 bg-amber-400/10",
-    badge: "bg-amber-400/15 text-amber-100 ring-1 ring-amber-400/35",
-    cell: "text-amber-200 font-medium",
-    bar: "bg-amber-400",
+    card: "",
+    value: "text-amber-700",
+    badge: "bg-amber-100 text-amber-800",
+    cell: "text-amber-800 font-medium",
+    bar: "bg-amber-500",
   },
   emergency: {
-    card: "border-red-400/50 bg-red-500/10",
-    badge: "bg-red-400/15 text-red-100 ring-1 ring-red-400/40",
-    cell: "text-red-200 font-semibold",
-    bar: "bg-red-400",
+    card: "ring-1 ring-accent/25",
+    value: "text-accent",
+    badge: "bg-accent/10 text-accent",
+    cell: "text-accent font-semibold",
+    bar: "bg-accent",
   },
   unknown: {
-    card: "border-dashed border-white/20 bg-white/5",
-    badge: "bg-transparent text-slate-300 ring-1 ring-white/20",
-    cell: "text-slate-400",
-    bar: "bg-slate-500",
+    card: "ring-1 ring-black/10",
+    value: "text-ink",
+    badge: "bg-transparent text-muted ring-1 ring-black/10",
+    cell: "text-muted",
+    bar: "bg-[#a1a1a6]",
   },
 };

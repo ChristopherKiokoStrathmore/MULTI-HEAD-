@@ -22,19 +22,18 @@ export default function LoadingState({ detail }: { detail?: string }) {
 
   return (
     <div
-      className="flex items-start gap-3 rounded-2xl border border-sky-400/25 bg-sky-400/8 p-4"
+      className="flex items-start gap-3 rounded-[1.15rem] bg-surface-2 px-5 py-4"
       role="status"
       aria-live="polite"
     >
-      <Spinner className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
-      <div className="min-w-0 text-sm">
-        <p className="font-medium text-sky-100">
-          Waking up the model, this can take up to 40s on first use.
+      <Spinner className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+      <div className="min-w-0 text-[14px]">
+        <p className="font-medium tracking-tight text-ink">
+          Waking up the model. First use can take up to 40 seconds.
         </p>
-        <p className="mt-1 text-sky-100/75">
+        <p className="mt-1 text-muted">
           {detail ? `${detail} · ` : ""}
-          Elapsed:{" "}
-          <span className="font-mono tabular-nums text-sky-50">{seconds}s</span>
+          Elapsed <span className="font-mono tabular-nums text-ink/80">{seconds}s</span>
         </p>
       </div>
     </div>
