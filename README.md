@@ -10,8 +10,10 @@ Two modes on one page:
    holds the message text, calls `POST /predict_batch`, renders a results table, and offers
    the results back as a downloadable CSV.
 
-The frontend holds no model logic and no API URL. It talks only to the API named by
-`NEXT_PUBLIC_API_URL`.
+The frontend holds no model logic and no hardcoded API URL. It talks only to the API named by
+`NEXT_PUBLIC_API_URL` (read in `lib/api.ts`). The UI is a dark, operations-style demo: single-message
+classification and CSV batch, with a health warm-up pill, cold-start elapsed timer, and
+Issue / Sentiment / Urgency result cards.
 
 ---
 
@@ -21,7 +23,7 @@ There is exactly one, and it is required:
 
 | Variable | Required | Example | Notes |
 | --- | --- | --- | --- |
-| `NEXT_PUBLIC_API_URL` | Yes | `https://your-model-api.example.com` | Base URL of the deployed model API. Trailing slashes are stripped automatically. |
+| `NEXT_PUBLIC_API_URL` | Yes | `https://your-model-api.example.com` | **Base URL only** of the deployed model API. Do **not** append `/predict`, `/health`, or `/predict_batch`. Trailing slashes are stripped automatically. |
 
 The app derives all three endpoints from it:
 
@@ -29,8 +31,16 @@ The app derives all three endpoints from it:
 - `POST {NEXT_PUBLIC_API_URL}/predict` — `{"text": "..."}`
 - `POST {NEXT_PUBLIC_API_URL}/predict_batch` — `{"texts": [...]}`
 
-If the variable is unset, the page renders an explicit banner saying so instead of failing
-silently or calling a placeholder host.
+If the variable is unset, the page still renders the full demo chrome plus a configuration
+notice (not a silent failure, and not a placeholder host). Classify actions stay disabled
+until the URL is set.
+
+This project’s currently deployed model API (set this as the *base* URL in Vercel, then
+redeploy):
+
+```
+https://thechriskioko--threehead-serve-server-fastapi-app.modal.run
+```
 
 > **`NEXT_PUBLIC_*` values are inlined at BUILD time, not read at runtime.**
 > Changing this value in Vercel has no effect until you **redeploy**. This trips people up
@@ -65,7 +75,8 @@ npm run start    # serve the production build locally
 2. Go to **Settings → Environment Variables**.
 3. Add:
    - **Key:** `NEXT_PUBLIC_API_URL`
-   - **Value:** your API base URL, e.g. `https://your-model-api.example.com`
+   - **Value:** your API **base** URL (no `/predict` suffix), e.g.
+     `https://thechriskioko--threehead-serve-server-fastapi-app.modal.run`
    - **Environments:** tick **Production**, **Preview** and **Development**.
 4. **Save**, then go to **Deployments**, open the latest one, and choose
    **⋯ → Redeploy**. The variable is baked into the client bundle at build time, so an
@@ -118,9 +129,9 @@ with **no status code and no body** — the browser withholds the reason from Ja
 The app detects this case and says so explicitly, but only the browser's Network tab shows
 the underlying cause.
 
-If you cannot change the API's CORS settings, the alternative is to proxy through a Next.js
-route handler (`app/api/predict/route.ts`) so the call becomes same-origin. That also means
-the URL stops being public, which would make it a server-only `API_URL` rather than
+This demo does **not** proxy through Next.js: the browser calls Modal directly. CORS on the
+API already allows `*.vercel.app`. If you cannot change CORS later, the alternative is a
+same-origin route handler (`app/api/...`) with a server-only `API_URL` instead of
 `NEXT_PUBLIC_API_URL`.
 
 ### 2. Cold starts
@@ -171,6 +182,7 @@ In CSV mode, rows already classified before a failure are kept and stay download
 │   └── page.tsx              # the single page (server component shell)
 ├── components/
 │   ├── ClassifierApp.tsx     # mode switch + mount warm-up + health pill
+│   ├── ConfigNotice.tsx      # empty state when NEXT_PUBLIC_API_URL is unset
 │   ├── SingleMode.tsx        # textbox → POST /predict
 │   ├── BatchMode.tsx         # CSV → column picker → POST /predict_batch → table
 │   ├── PredictionCards.tsx   # the three labeled result cards
@@ -181,6 +193,7 @@ In CSV mode, rows already classified before a failure are kept and stay download
 │   ├── api.ts                # the ONLY place NEXT_PUBLIC_API_URL is read
 │   ├── types.ts              # API response types
 │   ├── format.ts             # confidence/score formatting
+│   ├── examples.ts           # sample messages for the single-message demo
 │   └── urgency.ts            # urgency label → colour mapping
 ├── sample-messages.csv       # test file for CSV mode
 ├── .env.example

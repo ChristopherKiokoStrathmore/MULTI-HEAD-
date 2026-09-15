@@ -1,9 +1,176 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-display: var(--font-source), ui-serif, Georgia, "Times New Roman", serif;
+
+  --color-canvas: #070b14;
+  --color-surface: #101827;
+  --color-surface-2: #172033;
+  --color-line: #2a3a52;
+  --color-ink: #eef3fb;
+  --color-muted: #9aabc2;
+  --color-accent: #2dd4bf;
+  --color-accent-dim: #0f766e;
 }
 
 html {
   -webkit-text-size-adjust: 100%;
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  z-index: 50;
+  border-radius: 0.5rem;
+  background: var(--color-accent);
+  color: #042f2e;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, black 15%, transparent 75%);
+}
+
+.bg-hero-glow {
+  background:
+    radial-gradient(ellipse 55% 42% at 50% -8%, rgb(45 212 191 / 0.16), transparent 62%),
+    radial-gradient(ellipse 28% 28% at 88% 8%, rgb(251 191 36 / 0.07), transparent 55%);
+}
+
+.panel {
+  border: 1px solid var(--color-line);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.04) inset,
+    0 24px 48px -24px rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(8px);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  background: var(--color-accent);
+  color: #042f2e;
+  padding: 0.55rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition:
+    background-color 120ms ease,
+    transform 120ms ease,
+    box-shadow 120ms ease;
+  box-shadow: 0 0 0 1px rgb(45 212 191 / 0.25), 0 10px 24px -16px rgb(45 212 191 / 0.8);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #5eead4;
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-primary:disabled {
+  cursor: not-allowed;
+  background: #334155;
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+  padding: 0.55rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #1e2d44;
+  border-color: #3d5473;
+}
+
+.btn-secondary:disabled {
+  cursor: not-allowed;
+  color: #64748b;
+}
+
+.field {
+  width: 100%;
+  border-radius: 0.85rem;
+  border: 1px solid var(--color-line);
+  background: #0c1422;
+  color: var(--color-ink);
+  padding: 0.85rem 1rem;
+  font-size: 0.925rem;
+  line-height: 1.55;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.field::placeholder {
+  color: #6b7c94;
+}
+
+.field:hover:not(:disabled) {
+  border-color: #3d5473;
+}
+
+.field:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--color-accent) 70%, var(--color-line));
+  box-shadow: 0 0 0 3px rgb(45 212 191 / 0.18);
+}
+
+.field:disabled {
+  background: #0a101b;
+  color: #64748b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary,
+  .btn-secondary,
+  .field,
+  .animate-spin,
+  .animate-pulse {
+    animation: none !important;
+    transition: none !important;
+  }
 }
