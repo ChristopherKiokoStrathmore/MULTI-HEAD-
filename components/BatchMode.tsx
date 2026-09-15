@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 import type { Prediction, RowResult } from "@/lib/types";
 import { BATCH_CHUNK_SIZE, errorText, predictBatchChunked } from "@/lib/api";
-import { formatConfidence, formatScore } from "@/lib/format";
+import { formatConfidence, formatLabel, formatScore } from "@/lib/format";
 import { urgencyTone, URGENCY_STYLES } from "@/lib/urgency";
 import LoadingState from "./LoadingState";
 import ErrorBanner from "./ErrorBanner";
@@ -351,7 +351,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
                       {result.prediction ? (
                         <>
                           <td className="px-3 py-3 text-ink">
-                            {result.prediction.issue}
+                            {formatLabel(result.prediction.issue)}
                             {issueConfidence && (
                               <span className="mt-0.5 block font-mono text-xs text-muted">
                                 {issueConfidence}
@@ -359,7 +359,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
                             )}
                           </td>
                           <td className="px-3 py-3 text-ink">
-                            {result.prediction.sentiment}
+                            {formatLabel(result.prediction.sentiment)}
                             {sentimentConfidence && (
                               <span className="mt-0.5 block font-mono text-xs text-muted">
                                 {sentimentConfidence}
@@ -370,7 +370,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
                             <span
                               className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${URGENCY_STYLES[tone].badge}`}
                             >
-                              {result.prediction.urgency}
+                              {formatLabel(result.prediction.urgency)}
                             </span>
                             {score && (
                               <span className="mt-0.5 block font-mono text-xs text-muted">
