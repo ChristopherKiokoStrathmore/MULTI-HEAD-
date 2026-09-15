@@ -15,13 +15,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#070708",
+  themeColor: "#EC1B24",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${inter.className}`}>
-      <body className="min-h-screen bg-canvas font-sans text-ink antialiased">
+      <body className="min-h-screen bg-canvas font-sans antialiased">
         <a href="#main" className="skip-link">
           Skip to content
         </a>

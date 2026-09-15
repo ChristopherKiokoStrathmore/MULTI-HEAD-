@@ -18,10 +18,10 @@ const HEALTH_LABEL: Record<HealthStatus, string> = {
 };
 
 const HEALTH_DOT: Record<HealthStatus, string> = {
-  unknown: "bg-[#636366]",
-  warming: "bg-sky-300 animate-pulse",
-  ready: "bg-emerald-400",
-  unreachable: "bg-amber-400",
+  unknown: "bg-white/50",
+  warming: "bg-white animate-pulse",
+  ready: "bg-emerald-300",
+  unreachable: "bg-amber-300",
 };
 
 export default function ClassifierApp() {
@@ -54,12 +54,12 @@ export default function ClassifierApp() {
   const apiReady = API_BASE_CONFIGURED;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {!apiReady && <ConfigNotice />}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div
-          className="inline-flex w-fit rounded-full bg-white/6 p-1"
+          className="inline-flex w-fit rounded-full bg-white/15 p-1"
           role="tablist"
           aria-label="Input mode"
         >
@@ -91,8 +91,8 @@ export default function ClassifierApp() {
                 }}
                 className={`rounded-full px-4 py-2 text-[13px] font-medium tracking-tight transition-colors ${
                   selected
-                    ? "bg-white/12 text-ink shadow-[0_1px_0_rgb(255_255_255/0.04)]"
-                    : "text-muted hover:text-ink"
+                    ? "bg-white text-accent shadow-sm"
+                    : "text-white/80 hover:text-white"
                 }`}
               >
                 {label}
@@ -103,7 +103,7 @@ export default function ClassifierApp() {
 
         {apiReady ? (
           <span
-            className="inline-flex items-center gap-2 self-start text-[12px] text-muted"
+            className="inline-flex items-center gap-2 self-start text-[12px] text-white/80"
             title={API_BASE}
           >
             {(health === "warming" || health === "unknown") && (
@@ -115,23 +115,23 @@ export default function ClassifierApp() {
             {HEALTH_LABEL[health]}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-2 self-start text-[12px] text-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#636366]" aria-hidden="true" />
+          <span className="inline-flex items-center gap-2 self-start text-[12px] text-white/80">
+            <span className="h-1.5 w-1.5 rounded-full bg-white/50" aria-hidden="true" />
             API URL not set
           </span>
         )}
       </div>
 
       {health === "unreachable" && (
-        <p className="max-w-2xl text-[14px] leading-relaxed text-muted">
+        <p className="max-w-2xl text-[14px] leading-relaxed text-white/85">
           The warm-up call to{" "}
-          <code className="font-mono text-[13px] text-ink/80">{API_BASE}/health</code> did not
+          <code className="font-mono text-[13px] text-white">{API_BASE}/health</code> did not
           succeed. You can still classify — the first request will simply carry the full cold
           start, and any real error will be shown in full below.
         </p>
       )}
 
-      <section id={`panel-${mode}`} role="tabpanel" aria-labelledby={`tab-${mode}`}>
+      <section id={`panel-${mode}`} role="tabpanel" aria-labelledby={`tab-${mode}`} className="sheet">
         {mode === "single" ? (
           <SingleMode disabled={!apiReady} />
         ) : (

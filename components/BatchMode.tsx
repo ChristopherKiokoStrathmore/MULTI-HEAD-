@@ -177,8 +177,8 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
           CSV file
         </label>
         <div
-          className={`mt-3 rounded-[1.4rem] border border-dashed p-5 transition-colors sm:p-6 ${
-            dragOver ? "border-accent bg-accent/8" : "border-white/12 bg-surface"
+          className={`mt-3 rounded-[1.25rem] border border-dashed p-5 transition-colors sm:p-6 ${
+            dragOver ? "border-accent bg-accent/6" : "border-black/12 bg-surface-2"
           }`}
           onDragOver={(event) => {
             event.preventDefault();
@@ -199,7 +199,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
             accept=".csv,text/csv"
             onChange={handleFile}
             disabled={busy}
-            className="block w-full cursor-pointer text-[13px] text-muted file:mr-3 file:rounded-full file:border-0 file:bg-ink file:px-4 file:py-2 file:text-[13px] file:font-medium file:text-canvas hover:file:bg-white disabled:cursor-not-allowed"
+            className="block w-full cursor-pointer text-[13px] text-muted file:mr-3 file:rounded-full file:border-0 file:bg-ink file:px-4 file:py-2 file:text-[13px] file:font-medium file:text-white hover:file:bg-black disabled:cursor-not-allowed"
           />
           <p className="mt-3 text-[13px] leading-relaxed text-muted">
             Drop a file here or choose one. Parsed in the browser with PapaParse. The first row
@@ -215,7 +215,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
       </div>
 
       {notice && (
-        <p className="rounded-[1.2rem] bg-surface px-5 py-4 text-[14px] leading-relaxed text-muted">
+        <p className="rounded-[1.15rem] bg-surface-2 px-5 py-4 text-[14px] leading-relaxed text-muted">
           {notice}
         </p>
       )}
@@ -282,7 +282,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
         <div className="space-y-3">
           <LoadingState detail={`Row ${progress.completed} of ${progress.total} classified`} />
           <div
-            className="h-1 overflow-hidden rounded-full bg-white/8"
+            className="h-1 overflow-hidden rounded-full bg-black/8"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
@@ -316,8 +316,8 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
             </button>
           </div>
 
-          <div className="overflow-x-auto rounded-[1.4rem] bg-surface">
-            <table className="min-w-full divide-y divide-white/8 text-[14px]">
+          <div className="overflow-x-auto rounded-[1.25rem] bg-surface-2">
+            <table className="min-w-full divide-y divide-black/8 text-[14px]">
               <thead>
                 <tr className="text-left text-[11px] font-medium tracking-wide text-muted">
                   <th className="px-4 py-3.5">#</th>
@@ -327,7 +327,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
                   <th className="px-4 py-3.5">Urgency</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/6">
+              <tbody className="divide-y divide-black/6">
                 {results.map((result) => {
                   const tone = urgencyTone(result.prediction?.urgency);
                   const score = formatScore(result.prediction?.urgency_score);
@@ -339,7 +339,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
                   );
 
                   return (
-                    <tr key={result.index} className="align-top hover:bg-white/[0.025]">
+                    <tr key={result.index} className="align-top hover:bg-black/[0.03]">
                       <td className="px-4 py-3.5 font-mono text-[12px] tabular-nums text-muted">
                         {result.index + 1}
                       </td>
