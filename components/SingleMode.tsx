@@ -42,19 +42,19 @@ export default function SingleMode({ disabled }: { disabled: boolean }) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <label htmlFor="message" className="block text-sm font-medium text-ink">
+          <label htmlFor="message" className="block text-[13px] font-medium text-ink">
             Customer message
           </label>
-          <span className="font-mono text-xs tabular-nums text-muted">
+          <span className="font-mono text-[11px] tabular-nums text-muted">
             {text.trim().length} characters
           </span>
         </div>
         <textarea
           id="message"
-          rows={6}
+          rows={7}
           value={text}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {
@@ -65,17 +65,17 @@ export default function SingleMode({ disabled }: { disabled: boolean }) {
           }}
           disabled={busy}
           placeholder="Paste a customer-care message here…"
-          className="field mt-2 resize-y"
+          className="field mt-3 resize-y"
         />
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <p className="text-xs text-muted">Examples</p>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <p className="text-[12px] text-muted">Try</p>
           {SAMPLE_MESSAGES.map((sample) => (
             <button
               key={sample.label}
               type="button"
               onClick={() => setText(sample.text)}
               disabled={busy}
-              className="rounded-full border border-line bg-surface-2 px-3 py-1 text-xs font-medium text-muted transition-colors hover:border-accent/40 hover:text-ink disabled:cursor-not-allowed"
+              className="chip"
             >
               {sample.label}
             </button>
@@ -100,10 +100,10 @@ export default function SingleMode({ disabled }: { disabled: boolean }) {
           </button>
         )}
 
-        <p className="text-xs text-muted">
+        <p className="text-[12px] text-muted">
           {disabled
             ? "Classification is unavailable until the API URL is set."
-            : "Ctrl or ⌘ + Enter to classify"}
+            : "⌘ or Ctrl + Enter"}
         </p>
       </div>
 

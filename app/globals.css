@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
-  --font-display: var(--font-source), ui-serif, Georgia, "Times New Roman", serif;
 
-  --color-canvas: #070b14;
-  --color-surface: #101827;
-  --color-surface-2: #172033;
-  --color-line: #2a3a52;
-  --color-ink: #eef3fb;
-  --color-muted: #9aabc2;
-  --color-accent: #2dd4bf;
-  --color-accent-dim: #0f766e;
+  --color-canvas: #070708;
+  --color-surface: #111113;
+  --color-surface-2: #19191c;
+  --color-line: #2a2a2e;
+  --color-ink: #f5f5f7;
+  --color-muted: #8e8e93;
+  /* Airtel brand red — locked from airtel.africa (#EC1B24) and Airtel Kenya CSS (#ED1C24). */
+  --color-accent: #ec1b24;
+  --color-accent-strong: #ff2d36;
 }
 
 html {
@@ -26,13 +26,13 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 28%, transparent);
   color: var(--color-ink);
 }
 
 :focus-visible {
   outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 .skip-link {
@@ -40,39 +40,29 @@ body {
   left: 1rem;
   top: -3rem;
   z-index: 50;
-  border-radius: 0.5rem;
+  border-radius: 999px;
   background: var(--color-accent);
-  color: #042f2e;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 600;
+  color: #fff;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .skip-link:focus {
   top: 1rem;
 }
 
-.bg-grid {
-  background-image:
-    linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, black 15%, transparent 75%);
+.bg-hero {
+  background: radial-gradient(
+    ellipse 70% 55% at 50% -10%,
+    rgb(236 27 36 / 0.14),
+    transparent 62%
+  );
 }
 
-.bg-hero-glow {
-  background:
-    radial-gradient(ellipse 55% 42% at 50% -8%, rgb(45 212 191 / 0.16), transparent 62%),
-    radial-gradient(ellipse 28% 28% at 88% 8%, rgb(251 191 36 / 0.07), transparent 55%);
-}
-
-.panel {
-  border: 1px solid var(--color-line);
-  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-  box-shadow:
-    0 1px 0 rgb(255 255 255 / 0.04) inset,
-    0 24px 48px -24px rgb(0 0 0 / 0.55);
-  backdrop-filter: blur(8px);
+.brand-rule {
+  height: 2px;
+  background: var(--color-accent);
 }
 
 .btn-primary {
@@ -80,31 +70,33 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 0.75rem;
+  min-height: 2.75rem;
+  border-radius: 999px;
   background: var(--color-accent);
-  color: #042f2e;
-  padding: 0.55rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 600;
+  color: #fff;
+  padding: 0.65rem 1.35rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   transition:
-    background-color 120ms ease,
-    transform 120ms ease,
-    box-shadow 120ms ease;
-  box-shadow: 0 0 0 1px rgb(45 212 191 / 0.25), 0 10px 24px -16px rgb(45 212 191 / 0.8);
+    background-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.14) inset;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #5eead4;
+  background: var(--color-accent-strong);
 }
 
 .btn-primary:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: translateY(0.5px);
 }
 
 .btn-primary:disabled {
   cursor: not-allowed;
-  background: #334155;
-  color: #94a3b8;
+  background: #2a2a2e;
+  color: #6e6e73;
   box-shadow: none;
 }
 
@@ -113,61 +105,111 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--color-line);
-  background: var(--color-surface-2);
+  min-height: 2.75rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: transparent;
   color: var(--color-ink);
-  padding: 0.55rem 0.9rem;
+  padding: 0.6rem 1.15rem;
   font-size: 0.875rem;
-  font-weight: 600;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  font-weight: 500;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #1e2d44;
-  border-color: #3d5473;
+  background: rgb(255 255 255 / 0.05);
+  border-color: rgb(255 255 255 / 0.18);
 }
 
 .btn-secondary:disabled {
   cursor: not-allowed;
-  color: #64748b;
+  color: #6e6e73;
 }
 
 .field {
   width: 100%;
-  border-radius: 0.85rem;
-  border: 1px solid var(--color-line);
-  background: #0c1422;
+  border-radius: 1.15rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: var(--color-surface);
   color: var(--color-ink);
-  padding: 0.85rem 1rem;
-  font-size: 0.925rem;
-  line-height: 1.55;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+  padding: 1rem 1.1rem;
+  font-size: 1.0125rem;
+  line-height: 1.6;
+  letter-spacing: -0.011em;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
 }
 
 .field::placeholder {
-  color: #6b7c94;
+  color: #636366;
 }
 
 .field:hover:not(:disabled) {
-  border-color: #3d5473;
+  border-color: rgb(255 255 255 / 0.14);
 }
 
 .field:focus {
   outline: none;
-  border-color: color-mix(in srgb, var(--color-accent) 70%, var(--color-line));
-  box-shadow: 0 0 0 3px rgb(45 212 191 / 0.18);
+  border-color: color-mix(in srgb, var(--color-accent) 72%, transparent);
+  box-shadow: 0 0 0 4px rgb(236 27 36 / 0.16);
+  background: #161618;
 }
 
 .field:disabled {
-  background: #0a101b;
-  color: #64748b;
+  background: #0d0d0f;
+  color: #6e6e73;
+}
+
+.chip {
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: transparent;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.chip:hover:not(:disabled) {
+  color: var(--color-ink);
+  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  background: rgb(236 27 36 / 0.08);
+}
+
+.chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.reveal {
+  animation: rise 420ms ease both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .btn-primary,
   .btn-secondary,
   .field,
+  .chip,
+  .reveal,
   .animate-spin,
   .animate-pulse {
     animation: none !important;
