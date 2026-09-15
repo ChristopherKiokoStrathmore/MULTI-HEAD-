@@ -22,3 +22,9 @@ export function formatScore(value: number | null | undefined): string | null {
 export function truncate(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max)}… (truncated)`;
 }
+
+/** Display-only: `Airtel_Money_Reversal` → `Airtel Money Reversal`. */
+export function formatLabel(raw: string | null | undefined): string {
+  if (!raw) return "";
+  return raw.replace(/_/g, " ").trim();
+}

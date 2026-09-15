@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Prediction } from "@/lib/types";
-import { confidencePercent, formatConfidence, formatScore } from "@/lib/format";
+import { confidencePercent, formatConfidence, formatLabel, formatScore } from "@/lib/format";
 import { urgencyTone, URGENCY_STYLES } from "@/lib/urgency";
 
 function ConfidenceBar({
@@ -66,13 +66,18 @@ export default function PredictionCards({ prediction }: { prediction: Prediction
 
   return (
     <div className="grid gap-3 sm:grid-cols-3 sm:gap-4" aria-live="polite">
-      <Card label="Issue" value={prediction.issue}>
+      <Card label="Issue" value={formatLabel(prediction.issue)}>
         <ConfidenceBar value={prediction.confidence?.issue} barClass="bg-teal-300" />
       </Card>
-      <Card label="Sentiment" value={prediction.sentiment}>
+      <Card label="Sentiment" value={formatLabel(prediction.sentiment)}>
         <ConfidenceBar value={prediction.confidence?.sentiment} barClass="bg-sky-300" />
       </Card>
-      <Card label="Urgency" value={prediction.urgency} className={styles.card} sub={score ? `Score ${score}` : null} />
+      <Card
+        label="Urgency"
+        value={formatLabel(prediction.urgency)}
+        className={styles.card}
+        sub={score ? `Score ${score}` : null}
+      />
     </div>
   );
 }
