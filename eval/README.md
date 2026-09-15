@@ -38,7 +38,8 @@ Header row required. Column names are matched case-insensitively.
 | `urgency` | yes | Gold urgency label |
 | `id` | no | Echoed in low-confidence flags (defaults to row number) |
 
-Extra columns are ignored. Lines starting with `#` are comments.
+Extra columns are ignored. Lines starting with `#` are comments (the eval
+script and the in-browser CSV upload both skip them).
 
 Labels are compared after a light normalize: trim, lower-case, spaces/hyphens
 → underscores. They should still match the **API’s snake_case** strings.

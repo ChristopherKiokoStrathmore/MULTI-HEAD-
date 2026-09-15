@@ -55,6 +55,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
     Papa.parse<CsvRow>(file, {
       header: true,
       skipEmptyLines: true,
+      comments: "#",
       complete: (parsed) => {
         const parsedHeaders = (parsed.meta.fields ?? []).filter(
           (h) => h && h.trim().length > 0,
@@ -214,7 +215,7 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
           />
           <p className="mt-2 text-xs leading-relaxed text-muted">
             Drop a file here or choose one. Parsed in the browser with PapaParse. The first row
-            must contain column headers.
+            must contain column headers. Lines starting with # are ignored.
             {fileName ? (
               <>
                 {" "}
