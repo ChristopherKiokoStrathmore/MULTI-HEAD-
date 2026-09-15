@@ -5,10 +5,12 @@ import Papa from "papaparse";
 import type { Prediction, RowResult } from "@/lib/types";
 import { BATCH_CHUNK_SIZE, errorText, predictBatchChunked } from "@/lib/api";
 import { formatConfidence, formatLabel, formatScore } from "@/lib/format";
+import { ISSUE_ABSTAIN_THRESHOLD, shouldAbstainOnIssue } from "@/lib/trust";
 import { urgencyTone, URGENCY_STYLES } from "@/lib/urgency";
 import LoadingState from "./LoadingState";
 import ErrorBanner from "./ErrorBanner";
 import Spinner from "./Spinner";
+import { NeedsReviewBadge } from "./TrustNotice";
 
 type CsvRow = Record<string, string>;
 
@@ -146,6 +148,11 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
         text: result.text,
         issue: result.prediction?.issue ?? "",
         issue_confidence: formatConfidence(result.prediction?.confidence?.issue) ?? "",
+        issue_needs_review: result.prediction
+          ? shouldAbstainOnIssue(result.prediction.confidence?.issue)
+            ? "yes"
+            : "no"
+          : "",
         sentiment: result.prediction?.sentiment ?? "",
         sentiment_confidence:
           formatConfidence(result.prediction?.confidence?.sentiment) ?? "",
@@ -167,8 +174,12 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
   }
 
   const classifiedCount = results.filter((r) => r.prediction).length;
+  const needsReviewCount = results.filter(
+    (r) => r.prediction && shouldAbstainOnIssue(r.prediction.confidence?.issue),
+  ).length;
   const progressPct =
     progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+  const thresholdPct = Math.round(ISSUE_ABSTAIN_THRESHOLD * 100);
 
   return (
     <div className="space-y-5">
@@ -306,6 +317,16 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
             <p className="text-sm text-muted">
               <span className="font-medium text-ink">{classifiedCount}</span> of {results.length}{" "}
               row(s) classified
+              {classifiedCount > 0 && (
+                <>
+                  {" "}
+                  ·{" "}
+                  <span className={needsReviewCount > 0 ? "font-medium text-amber-100" : ""}>
+                    {needsReviewCount}
+                  </span>{" "}
+                  need review (issue confidence &lt; {thresholdPct}%)
+                </>
+              )}
             </p>
             <button
               type="button"
@@ -338,9 +359,15 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
                   const sentimentConfidence = formatConfidence(
                     result.prediction?.confidence?.sentiment,
                   );
+                  const issueAbstain =
+                    !!result.prediction &&
+                    shouldAbstainOnIssue(result.prediction.confidence?.issue);
 
                   return (
-                    <tr key={result.index} className="align-top hover:bg-white/[0.02]">
+                    <tr
+                      key={result.index}
+                      className={`align-top hover:bg-white/[0.02] ${issueAbstain ? "bg-amber-400/[0.04]" : ""}`}
+                    >
                       <td className="px-3 py-3 font-mono text-xs tabular-nums text-muted">
                         {result.index + 1}
                       </td>
@@ -350,13 +377,17 @@ export default function BatchMode({ disabled }: { disabled: boolean }) {
 
                       {result.prediction ? (
                         <>
-                          <td className="px-3 py-3 text-ink">
-                            {formatLabel(result.prediction.issue)}
+                          <td className={`px-3 py-3 ${issueAbstain ? "text-ink/70" : "text-ink"}`}>
+                            <span className={issueAbstain ? "font-normal" : ""}>
+                              {formatLabel(result.prediction.issue)}
+                            </span>
                             {issueConfidence && (
                               <span className="mt-0.5 block font-mono text-xs text-muted">
                                 {issueConfidence}
+                                {issueAbstain ? " · top guess" : ""}
                               </span>
                             )}
+                            {issueAbstain && <NeedsReviewBadge />}
                           </td>
                           <td className="px-3 py-3 text-ink">
                             {formatLabel(result.prediction.sentiment)}

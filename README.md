@@ -13,7 +13,8 @@ Two modes on one page:
 The frontend holds no model logic and no hardcoded API URL. It talks only to the API named by
 `NEXT_PUBLIC_API_URL` (read in `lib/api.ts`). The UI is a dark, operations-style demo: single-message
 classification and CSV batch, with a health warm-up pill, cold-start elapsed timer, and
-Issue / Sentiment / Urgency result cards.
+Issue / Sentiment / Urgency result cards. When issue confidence is below `0.6`, results are marked
+**needs review / do not auto-route** while still showing the top guess for transparency.
 
 ---
 
@@ -61,9 +62,21 @@ A `sample-messages.csv` file is included at the repo root for exercising the CSV
 Other scripts:
 
 ```bash
-npm run build    # production build
-npm run start    # serve the production build locally
+npm run build         # production build
+npm run start         # serve the production build locally
+npm run eval:smoke    # score the synthetic fixture against the live API
+npm run eval -- --csv /path/to/heldout.csv   # real labeled eval (see eval/README.md)
 ```
+
+### Evaluation harness
+
+`eval/` scores a labeled CSV against the **live** Modal API (`POST /predict_batch`). No local GPU.
+
+- Schema, flags, and how to swap in a real held-out file: **[eval/README.md](eval/README.md)**
+- Fixture: `eval/synthetic-heldout.smoke.csv` — **synthetic smoke data, not production gold**, no customer PII
+- Default abstain threshold is `0.6` (`ISSUE_ABSTAIN_THRESHOLD` in `lib/trust.ts`). Below that, the UI shows a needs-review state instead of treating the issue head as auto-routable.
+
+API URL for eval (first non-empty wins): `--api-url`, `MULTIHEAD_API_URL`, `NEXT_PUBLIC_API_URL`, then the known Modal base. The Next.js app itself still reads **only** `NEXT_PUBLIC_API_URL`.
 
 ---
 
@@ -185,7 +198,8 @@ In CSV mode, rows already classified before a failure are kept and stay download
 │   ├── ConfigNotice.tsx      # empty state when NEXT_PUBLIC_API_URL is unset
 │   ├── SingleMode.tsx        # textbox → POST /predict
 │   ├── BatchMode.tsx         # CSV → column picker → POST /predict_batch → table
-│   ├── PredictionCards.tsx   # the three labeled result cards
+│   ├── PredictionCards.tsx   # the three labeled result cards (+ abstain notice)
+│   ├── TrustNotice.tsx       # needs-review banner / badge
 │   ├── LoadingState.tsx      # cold-start message + elapsed counter
 │   ├── ErrorBanner.tsx       # verbatim error display
 │   └── Spinner.tsx
@@ -194,7 +208,12 @@ In CSV mode, rows already classified before a failure are kept and stay download
 │   ├── types.ts              # API response types
 │   ├── format.ts             # confidence/score formatting
 │   ├── examples.ts           # sample messages for the single-message demo
-│   └── urgency.ts            # urgency label → colour mapping
+│   ├── urgency.ts            # urgency label → colour mapping
+│   └── trust.ts              # ISSUE_ABSTAIN_THRESHOLD (0.6) and abstain helper
+├── eval/
+│   ├── README.md             # CSV schema + how to run a real held-out eval
+│   ├── run.mjs               # live-API scoring script (no GPU)
+│   └── synthetic-heldout.smoke.csv  # synthetic smoke fixture, not gold
 ├── sample-messages.csv       # test file for CSV mode
 ├── .env.example
 ├── next.config.ts
@@ -210,5 +229,10 @@ In CSV mode, rows already classified before a failure are kept and stay download
   known class.
 - **Confidence** is shown as a small percentage under Issue and Sentiment. Values are
   accepted as either `0–1` or `0–100` and normalised to a percentage.
+- **Issue abstain:** if issue confidence is below `ISSUE_ABSTAIN_THRESHOLD` (`0.6` in
+  `lib/trust.ts`), the UI shows a **Needs review — do not auto-route** state. The top
+  guess and confidence are still visible, but visually de-emphasised. The same rule
+  applies to CSV/batch rows (`issue_needs_review` is included in the download). The live
+  API does not return a runner-up issue, so the UI does not invent one.
 - **`urgency_score`** is shown under the Urgency card when the API returns it, and is
   omitted when it does not.

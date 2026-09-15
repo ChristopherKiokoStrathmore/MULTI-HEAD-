@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "eval": "node eval/run.mjs",
+    "eval:smoke": "node eval/run.mjs --csv eval/synthetic-heldout.smoke.csv"
   },
   "dependencies": {
     "next": "16.3.5",
