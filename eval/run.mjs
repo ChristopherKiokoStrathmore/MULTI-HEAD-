@@ -50,6 +50,8 @@ Options:
   --gates <path>               Gate thresholds JSON (default: eval/gates.smoke.json
                                when scoring the synthetic smoke CSV)
   --fail-on-gate               Exit 1 if gates fail (or set EVAL_FAIL_ON_GATE=1)
+  --include-text               Include message snippets in logs and JSON (off by
+                               default; do not enable in CI with private gold)
   --help                       Show this help
 
 API URL resolution (first non-empty wins):
@@ -82,6 +84,7 @@ function parseArgs(argv) {
     json: "",
     gates: "",
     failOnGate: truthyEnv("EVAL_FAIL_ON_GATE"),
+    includeText: truthyEnv("EVAL_INCLUDE_TEXT"),
     help: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -99,6 +102,7 @@ function parseArgs(argv) {
     else if (a === "--json") out.json = next();
     else if (a === "--gates") out.gates = next();
     else if (a === "--fail-on-gate") out.failOnGate = true;
+    else if (a === "--include-text") out.includeText = true;
     else throw new Error(`Unknown argument: ${a}`);
   }
   if (!Number.isFinite(out.chunkSize) || out.chunkSize < 1) {
@@ -359,6 +363,15 @@ function printGates(gateEval, gatesPath, failOnGate) {
   }
 }
 
+function withoutText(item) {
+  const { text, ...rest } = item;
+  return rest;
+}
+
+function jsonRows(items, includeText) {
+  return includeText ? items : items.map(withoutText);
+}
+
 function printHeadReport(name, report) {
   printSection(`${name} head`);
   console.log(`  n          ${report.n}`);
@@ -415,6 +428,7 @@ export async function runEval(options) {
   const chunkSize = options.chunkSize;
   const abstainThreshold = options.abstainThreshold;
   const failOnGate = Boolean(options.failOnGate);
+  const includeText = Boolean(options.includeText);
   const gatesPath = resolveGatesPath(options.gates, csvPath);
   const loadedGates = gatesPath ? loadGates(gatesPath) : { path: "", spec: null };
 
@@ -436,6 +450,7 @@ export async function runEval(options) {
   console.log(`  abstain threshold   ${abstainThreshold}  (issue confidence; same default as lib/trust.ts ISSUE_ABSTAIN_THRESHOLD)`);
   console.log(`  gates               ${loadedGates.path || "(none)"}`);
   console.log(`  fail-on-gate        ${failOnGate ? "yes" : "no"}`);
+  console.log(`  include text        ${includeText ? "yes (message snippets in logs/JSON)" : "no (redacted; pass --include-text)"}`);
 
   printSection("health");
   const health = await fetchJson(`${apiBase}/health`, { method: "GET" }, HEALTH_TIMEOUT_MS);
@@ -485,8 +500,8 @@ export async function runEval(options) {
       id: loaded.rows[i].id,
       gold: urgGold[i],
       pred: urgPred[i],
-      text: loaded.rows[i].text.slice(0, 96),
     };
+    if (includeText) item.text = loaded.rows[i].text.slice(0, 96);
     if (gold === "emergency" && pred !== "emergency") emergencyMissRows.push(item);
     if (gold !== "emergency" && pred === "emergency") falseEmergencyRows.push(item);
   }
@@ -505,12 +520,15 @@ export async function runEval(options) {
     }
     for (const item of items.slice(0, 8)) {
       console.log(`    [${item.id}] gold=${item.gold}  pred=${item.pred}`);
-      console.log(`         ${item.text}`);
+      if (includeText && item.text) console.log(`         ${item.text}`);
     }
     if (items.length > 8) console.log(`    … ${items.length - 8} more`);
   };
   listUrgency("emergency misses (gold emergency, not predicted emergency)", emergencyMissRows);
   listUrgency("false emergencies (gold not emergency, predicted emergency)", falseEmergencyRows);
+  if (!includeText) {
+    console.log("  message text redacted (pass --include-text for local debugging; leave off in CI with private gold)");
+  }
 
   printHistogram("issue confidence histogram", histogram(issueConf), issueConf.length);
   printHistogram("sentiment confidence histogram", histogram(sentConf), sentConf.length);
@@ -577,8 +595,8 @@ export async function runEval(options) {
       gold: loaded.rows[i].issue,
       pred: predictions[i].issue,
       confidence: conf,
-      text: loaded.rows[i].text.slice(0, 96),
     };
+    if (includeText) item.text = loaded.rows[i].text.slice(0, 96);
     if (low && ok) lowCorrect.push(item);
     else if (low && !ok) lowIncorrect.push(item);
     else if (!low && ok) highCorrect.push(item);
@@ -598,13 +616,16 @@ export async function runEval(options) {
     for (const item of items.slice(0, limit)) {
       const c = item.confidence === null ? "n/a" : fmt(item.confidence);
       console.log(`    [${item.id}] conf=${c}  gold=${item.gold}  pred=${item.pred}`);
-      console.log(`         ${item.text}`);
+      if (includeText && item.text) console.log(`         ${item.text}`);
     }
     if (items.length > limit) console.log(`    … ${items.length - limit} more`);
   };
   listFlags("LOW confidence, INCORRECT", lowIncorrect);
   listFlags("LOW confidence, CORRECT (abstain would hide a good guess)", lowCorrect);
   listFlags("HIGH confidence, INCORRECT", highIncorrect);
+  if (!includeText) {
+    console.log("  message text redacted (pass --include-text for local debugging; leave off in CI with private gold)");
+  }
 
   const mean = (arr) => (arr.length === 0 ? null : arr.reduce((s, x) => s + x, 0) / arr.length);
   const correctConfs = [];
@@ -635,6 +656,7 @@ export async function runEval(options) {
     abstainThreshold,
     n: loaded.rows.length,
     skipped: loaded.skipped,
+    includeText,
     health,
     heads: {
       issue: issueReport,
@@ -648,8 +670,8 @@ export async function runEval(options) {
     },
     urgencyOps: {
       ...urgencyOps,
-      emergencyMissRows,
-      falseEmergencyRows,
+      emergencyMissRows: jsonRows(emergencyMissRows, includeText),
+      falseEmergencyRows: jsonRows(falseEmergencyRows, includeText),
     },
     issueConfidence: {
       histogram: histogram(issueConf),
@@ -661,10 +683,10 @@ export async function runEval(options) {
     },
     abstainSweep: sweep,
     flags: {
-      lowCorrect,
-      lowIncorrect,
-      highCorrect: highCorrect.map(({ text, ...rest }) => rest),
-      highIncorrect,
+      lowCorrect: jsonRows(lowCorrect, includeText),
+      lowIncorrect: jsonRows(lowIncorrect, includeText),
+      highCorrect: jsonRows(highCorrect, includeText),
+      highIncorrect: jsonRows(highIncorrect, includeText),
     },
     gates: {
       file: loadedGates.path || null,
@@ -673,7 +695,7 @@ export async function runEval(options) {
       passed: gateEval ? gateEval.passed : null,
       results: gateEval ? gateEval.results : [],
     },
-    note: "Synthetic smoke CSVs are not production gold. Smoke gate floors are harness-health thresholds, not model-quality claims. Quote numbers only from an actual run against the live API.",
+    note: "Synthetic smoke CSVs are not production gold. Smoke gate floors are harness-health thresholds, not model-quality claims. Quote numbers only from an actual run against the live API. Message text is omitted from this report unless --include-text / EVAL_INCLUDE_TEXT=1.",
   };
 
   printGates(gateEval, loadedGates.path, failOnGate);

@@ -158,12 +158,45 @@ describe("evaluateGates", () => {
     });
     assert.equal(incomplete.passed, false);
   });
+
+  it("minScoredRows uses prediction count, not gold count", () => {
+    const ops = scoreUrgencyOps(["emergency"], ["emergency"]);
+    const gates = {
+      requireHealthOk: true,
+      requireModelLoaded: true,
+      requireCompleteScoring: false,
+      minScoredRows: 1,
+    };
+    const emptyPred = evaluateGates(gates, {
+      health: healthy,
+      nGold: 4,
+      nPred: 0,
+      urgencyOps: ops,
+    });
+    assert.equal(emptyPred.passed, false);
+    const minRows = emptyPred.results.find((r) => r.id === "scoring.minRows");
+    assert.equal(minRows.ok, false);
+    assert.match(minRows.detail, /scored 0/);
+
+    const scored = evaluateGates(gates, {
+      health: healthy,
+      nGold: 4,
+      nPred: 4,
+      urgencyOps: ops,
+    });
+    assert.equal(scored.passed, true, JSON.stringify(scored.results, null, 2));
+  });
 });
 
 describe("healthIsOk", () => {
-  it("accepts the live Modal health shape", () => {
+  it("accepts only status ok (live Modal contract)", () => {
     assert.equal(healthIsOk({ status: "ok", model_loaded: true }), true);
+    assert.equal(healthIsOk({ status: "OK" }), true);
     assert.equal(healthIsOk({ status: "warming" }), false);
+    assert.equal(healthIsOk({ status: "healthy" }), false);
+    assert.equal(healthIsOk({ status: "ready" }), false);
+    assert.equal(healthIsOk({ ok: true }), false);
+    assert.equal(healthIsOk({ ok: true, status: "starting" }), false);
     assert.equal(healthIsOk(null), false);
   });
 });

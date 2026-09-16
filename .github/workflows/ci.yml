@@ -71,6 +71,7 @@ jobs:
       - name: Score synthetic smoke against live API
         env:
           EVAL_FAIL_ON_GATE: "1"
+          # Do not set EVAL_INCLUDE_TEXT — reports/logs would then contain message snippets.
         run: npm run eval:smoke:ci
 
       - name: Upload eval JSON report
@@ -88,4 +89,5 @@ jobs:
       # 2. Write it to a runner-local path and run:
       #      node eval/run.mjs --csv /tmp/heldout.csv --json eval-heldout-report.json \
       #        --fail-on-gate --gates /tmp/heldout-gates.json
+      #    Do not pass --include-text (customer message snippets in logs/artifacts).
       # 3. Upload eval-heldout-report.json; delete the CSV at end of job.
