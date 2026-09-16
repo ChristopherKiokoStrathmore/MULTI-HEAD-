@@ -21,6 +21,17 @@ That runs:
 node eval/run.mjs --csv eval/synthetic-heldout.smoke.csv
 ```
 
+CI-equivalent (JSON artifact + non-zero exit if gates fail):
+
+```bash
+npm run eval:smoke:ci
+# same as:
+node eval/run.mjs --csv eval/synthetic-heldout.smoke.csv \
+  --json eval-smoke-report.json --fail-on-gate --gates eval/gates.smoke.json
+```
+
+`--fail-on-gate` can also be enabled with `EVAL_FAIL_ON_GATE=1`.
+
 `eval/synthetic-heldout.smoke.csv` is **synthetic smoke data**, not production
 gold and not a real held-out set. It has no customer PII. Use it only to prove
 the harness talks to the live API and prints metrics. **Do not quote those
@@ -79,6 +90,8 @@ node eval/run.mjs --csv /path/to/real-heldout.csv --json eval-report.json
 --chunk-size 20              rows per /predict_batch call
 --abstain-threshold 0.6      issue-confidence cutoff (same default as the UI)
 --json report.json           machine-readable copy of the printed metrics
+--gates path/to/gates.json   explicit pass/fail thresholds
+--fail-on-gate               exit 1 if those thresholds fail
 ```
 
 API URL resolution (first non-empty wins): `--api-url`, then
@@ -93,6 +106,11 @@ the host. The eval default exists so `npm run eval:smoke` works without a
 
 - Per-head **accuracy** and **macro-F1** (unweighted mean of per-class F1 over
   gold labels that appear in the file)
+- Urgency **emergency recall** (gold emergency → predicted emergency)
+- Urgency **false-emergency rate** (predicted emergency among non-emergency gold)
+- Urgency **quadratic-weighted Cohen's kappa** on the ordinal set
+  `{low, medium, emergency}` (no extra dependencies; labels outside that set
+  are skipped)
 - Per-class precision / recall / F1 / support
 - Off-diagonal **confusion** pairs (gold → predicted)
 - Issue and sentiment **confidence histograms** (0.1-wide bins)
@@ -111,3 +129,98 @@ The live `POST /predict` payload is `{ issue, sentiment, urgency,
 urgency_score, confidence.issue, confidence.sentiment }`. It does **not**
 return a second-best issue, so the harness cannot score top-2 without a
 backend change.
+
+## Gates (fail the process)
+
+`eval/gates.smoke.json` is the default floor file when scoring
+`eval/synthetic-heldout.smoke.csv`. Those numbers are **harness-health
+thresholds**, not model-quality claims. They exist so CI goes red on a dead
+API, an incomplete score, or a total urgency collapse:
+
+| Check | Smoke default | Meaning |
+| --- | --- | --- |
+| `requireHealthOk` | true | `GET /health` reports `status: ok` |
+| `requireModelLoaded` | true | health includes `model_loaded: true` |
+| `requireCompleteScoring` | true | every gold row got a prediction |
+| `minScoredRows` | 1 | at least one labeled row was scored |
+| `urgency.minEmergencyRecall` | 0.01 | fail if gold emergencies exist and recall is 0 |
+| `urgency.maxFalseEmergencyRate` | 0.99 | fail if non-emergency gold exists and 100% are predicted emergency |
+
+If the CSV has no gold emergencies, emergency-recall is skipped (and the same
+for false-emergency rate when every gold row is emergency). Edit the JSON to
+raise floors once you have a private human-gold file.
+
+Exit behavior:
+
+- Health / HTTP / parse errors already exit 1.
+- Metric floors only exit 1 when `--fail-on-gate` is set or `EVAL_FAIL_ON_GATE=1`.
+- The JSON report is written **before** the gate failure, so CI can still
+  upload `eval-smoke-report.json`.
+
+Unit tests for the metric + gate math (no network):
+
+```bash
+npm test
+```
+
+## CI
+
+GitHub Actions workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
+
+On push and pull request to `master` or `main`, two **independent** jobs run:
+
+| Job | Command | Needs Modal? |
+| --- | --- | --- |
+| `Frontend build` | `npm ci`, `npm test`, `npm run build` | no |
+| `Live eval smoke (Modal)` | `npm run eval:smoke:ci` | yes (public `/health` + `/predict_batch`) |
+
+Eval uses `continue-on-error: false`, so a Modal outage or a failed smoke gate
+turns the **workflow** red. The build job still runs and can stay green on its
+own. **Branch protection** is where you choose the merge policy:
+
+- Require **both** jobs on `master` if urgency regressions should block merge
+  (recommended once the workflow is trusted).
+- Require only **Frontend build** if a Modal cold-start/outage must not block
+  frontend-only PRs. Leave eval-smoke visible but optional.
+
+The eval job has a 20-minute timeout (cold start ~40–120s). It uploads
+`eval-smoke-report.json` as an artifact even when gates fail.
+
+### Pointing a private human-gold CSV at CI later
+
+Do **not** commit real customer messages. Keep gold outside git.
+
+Suggested GitHub Actions pattern:
+
+1. Store the labeled CSV in a repository secret (`EVAL_HELD_OUT_CSV`) **or**
+   download it in the job from private storage (S3, GCS, an internal URL).
+   A secret is only practical for a small file.
+2. Write it to a runner-local path that is never checked in, e.g. `/tmp/heldout.csv`.
+3. Use a **separate** gates file with the floors you actually believe
+   (copy `eval/gates.smoke.json` and tighten). You can keep that JSON in the
+   repo (thresholds only) or also load it from a secret (`EVAL_HELD_OUT_GATES`).
+4. Score and upload:
+
+```bash
+printf '%s\n' "$EVAL_HELD_OUT_CSV" > /tmp/heldout.csv
+node eval/run.mjs \
+  --csv /tmp/heldout.csv \
+  --json eval-heldout-report.json \
+  --fail-on-gate \
+  --gates eval/gates.heldout.json
+rm -f /tmp/heldout.csv
+```
+
+5. Optional env: `EVAL_GATES_FILE`, `MULTIHEAD_API_URL`.
+
+The smoke fixture includes a couple of **synthetic** explicit-de-escalation
+rows (e.g. “si urgent”) so false-emergency rate is exercised. Smoke floors
+still only fail on catastrophic collapse. Catching the known over-call as a
+hard quality gate belongs on private gold with tighter `maxFalseEmergencyRate`.
+
+## Training / retrain is out of this repo
+
+This repository is UI + live-API eval only. Improving urgency (retrain,
+loss weights, new labels) happens in the **Modal / training codebase**, then
+this harness is pointed at the new deployment. Do not expect a frontend PR
+to change model behavior.

@@ -10,3 +10,6 @@ next-env.d.ts
 *.tsbuildinfo
 .DS_Store
 npm-debug.log*
+eval-smoke-report.json
+eval-heldout-report.json
+eval-report.json
