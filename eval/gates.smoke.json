@@ -1,0 +1,14 @@
+{
+  "note": "Harness-health thresholds for eval/synthetic-heldout.smoke.csv only. These are NOT model-quality claims. Tighten them on a private human-gold CSV, not by quoting smoke numbers.",
+  "fixture": "eval/synthetic-heldout.smoke.csv",
+  "requireHealthOk": true,
+  "requireModelLoaded": true,
+  "requireCompleteScoring": true,
+  "minScoredRows": 1,
+  "urgency": {
+    "minEmergencyRecall": 0.01,
+    "maxFalseEmergencyRate": 0.99,
+    "skipEmergencyRecallIfSupportZero": true,
+    "skipFalseEmergencyRateIfSupportZero": true
+  }
+}
