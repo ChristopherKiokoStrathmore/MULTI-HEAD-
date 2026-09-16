@@ -8,20 +8,31 @@
  *
  *   npm run eval:smoke
  *   node eval/run.mjs --csv path/to/heldout.csv
+ *   node eval/run.mjs --csv eval/synthetic-heldout.smoke.csv --fail-on-gate --json report.json
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import Papa from "papaparse";
+import {
+  evaluateGates,
+  normalizeLabel,
+  scoreUrgencyOps,
+  truthyEnv,
+} from "./urgency-ops.mjs";
 
+const EVAL_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_API_BASE =
   "https://thechriskioko--threehead-serve-server-fastapi-app.modal.run";
 const DEFAULT_CSV = "eval/synthetic-heldout.smoke.csv";
+const SMOKE_CSV_BASENAME = "synthetic-heldout.smoke.csv";
+const DEFAULT_SMOKE_GATES = resolve(EVAL_DIR, "gates.smoke.json");
 /** Keep in lockstep with ISSUE_ABSTAIN_THRESHOLD in lib/trust.ts */
 const DEFAULT_ABSTAIN_THRESHOLD = 0.6;
 const DEFAULT_CHUNK_SIZE = 20;
-const HEALTH_TIMEOUT_MS = 60_000;
+/** Modal cold start can take ~40–120s; health is the first request. */
+const HEALTH_TIMEOUT_MS = 120_000;
 const BATCH_TIMEOUT_MS = 180_000;
 const ABSTAIN_SWEEP = [0.4, 0.5, 0.6, 0.7, 0.8];
 
@@ -36,6 +47,11 @@ Options:
   --chunk-size <n>             Rows per /predict_batch call (default: ${DEFAULT_CHUNK_SIZE})
   --abstain-threshold <0-1>    Issue-confidence cutoff (default: ${DEFAULT_ABSTAIN_THRESHOLD})
   --json <path>                Write a machine-readable report JSON
+  --gates <path>               Gate thresholds JSON (default: eval/gates.smoke.json
+                               when scoring the synthetic smoke CSV)
+  --fail-on-gate               Exit 1 if gates fail (or set EVAL_FAIL_ON_GATE=1)
+  --include-text               Include message snippets in logs and JSON (off by
+                               default; do not enable in CI with private gold)
   --help                       Show this help
 
 API URL resolution (first non-empty wins):
@@ -43,6 +59,11 @@ API URL resolution (first non-empty wins):
   2. MULTIHEAD_API_URL
   3. NEXT_PUBLIC_API_URL
   4. ${DEFAULT_API_BASE}
+
+Gate file resolution (first non-empty wins):
+  1. --gates
+  2. EVAL_GATES_FILE
+  3. eval/gates.smoke.json when the CSV basename is ${SMOKE_CSV_BASENAME}
 
 CSV schema (header row required):
   text            required  customer message
@@ -61,6 +82,9 @@ function parseArgs(argv) {
     chunkSize: DEFAULT_CHUNK_SIZE,
     abstainThreshold: DEFAULT_ABSTAIN_THRESHOLD,
     json: "",
+    gates: "",
+    failOnGate: truthyEnv("EVAL_FAIL_ON_GATE"),
+    includeText: truthyEnv("EVAL_INCLUDE_TEXT"),
     help: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -76,6 +100,9 @@ function parseArgs(argv) {
     else if (a === "--chunk-size") out.chunkSize = Number(next());
     else if (a === "--abstain-threshold") out.abstainThreshold = Number(next());
     else if (a === "--json") out.json = next();
+    else if (a === "--gates") out.gates = next();
+    else if (a === "--fail-on-gate") out.failOnGate = true;
+    else if (a === "--include-text") out.includeText = true;
     else throw new Error(`Unknown argument: ${a}`);
   }
   if (!Number.isFinite(out.chunkSize) || out.chunkSize < 1) {
@@ -95,13 +122,6 @@ function resolveApiBase(cliUrl) {
   const fromEnv = (process.env.MULTIHEAD_API_URL || process.env.NEXT_PUBLIC_API_URL || "").trim();
   const raw = (cliUrl || fromEnv || DEFAULT_API_BASE).trim();
   return raw.replace(/\/+$/, "");
-}
-
-function normalizeLabel(raw) {
-  return String(raw ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_");
 }
 
 function confidence01(value) {
@@ -275,6 +295,83 @@ function printSection(title) {
   console.log(`\n=== ${title} ===`);
 }
 
+function isSmokeCsv(csvPath) {
+  return basename(csvPath) === SMOKE_CSV_BASENAME;
+}
+
+function resolveGatesPath(cliGates, csvPath) {
+  const fromCli = (cliGates || "").trim();
+  if (fromCli) return resolve(fromCli);
+  const fromEnv = (process.env.EVAL_GATES_FILE || "").trim();
+  if (fromEnv) return resolve(fromEnv);
+  if (isSmokeCsv(csvPath)) return DEFAULT_SMOKE_GATES;
+  return "";
+}
+
+function loadGates(gatesPath) {
+  if (!gatesPath) return { path: "", spec: null };
+  if (!existsSync(gatesPath)) {
+    throw new Error(`Gates file not found: ${gatesPath}`);
+  }
+  let spec;
+  try {
+    spec = JSON.parse(readFileSync(gatesPath, "utf8"));
+  } catch (err) {
+    throw new Error(`Could not parse gates JSON ${gatesPath}: ${err instanceof Error ? err.message : err}`);
+  }
+  if (!spec || typeof spec !== "object" || Array.isArray(spec)) {
+    throw new Error(`Gates file must be a JSON object: ${gatesPath}`);
+  }
+  return { path: gatesPath, spec };
+}
+
+function printUrgencyOps(ops) {
+  printSection("urgency operations (CI-facing)");
+  const rec = ops.emergencyRecall === null ? "n/a" : fmt(ops.emergencyRecall);
+  const fer = ops.falseEmergencyRate === null ? "n/a" : fmt(ops.falseEmergencyRate);
+  const kappa = ops.quadraticWeightedKappa === null ? "n/a" : fmt(ops.quadraticWeightedKappa);
+  console.log(
+    `  emergency recall       ${rec}  (${ops.emergencyHits}/${ops.emergencySupport} gold emergencies predicted emergency)`,
+  );
+  console.log(
+    `  false-emergency rate   ${fer}  (${ops.falseEmergencyCount}/${ops.nonEmergencySupport} non-emergency gold predicted emergency)`,
+  );
+  console.log(`  quadratic κ (ordinal)  ${kappa}  (${ops.kappaMethod})`);
+  if (ops.emergencySupport === 0) {
+    console.log("  note  no gold emergency rows — emergency recall is not scored");
+  }
+  if (ops.nonEmergencySupport === 0) {
+    console.log("  note  no non-emergency gold rows — false-emergency rate is not scored");
+  }
+}
+
+function printGates(gateEval, gatesPath, failOnGate) {
+  printSection(`gates${gatesPath ? `  (${gatesPath})` : ""}`);
+  if (!gateEval) {
+    console.log("  (no gates file — pass --gates <path> or score the smoke CSV)");
+    return;
+  }
+  for (const row of gateEval.results) {
+    console.log(`  ${row.ok ? "PASS" : "FAIL"}  ${row.id}  ${row.detail}`);
+  }
+  if (gateEval.results.length === 0) {
+    console.log("  (gates file contained no applicable checks)");
+  }
+  console.log(`  overall                ${gateEval.passed ? "PASS" : "FAIL"}`);
+  if (!failOnGate) {
+    console.log("  fail-on-gate is off    (pass --fail-on-gate or EVAL_FAIL_ON_GATE=1 to exit 1)");
+  }
+}
+
+function withoutText(item) {
+  const { text, ...rest } = item;
+  return rest;
+}
+
+function jsonRows(items, includeText) {
+  return includeText ? items : items.map(withoutText);
+}
+
 function printHeadReport(name, report) {
   printSection(`${name} head`);
   console.log(`  n          ${report.n}`);
@@ -330,10 +427,19 @@ export async function runEval(options) {
   const apiBase = resolveApiBase(options.apiUrl);
   const chunkSize = options.chunkSize;
   const abstainThreshold = options.abstainThreshold;
+  const failOnGate = Boolean(options.failOnGate);
+  const includeText = Boolean(options.includeText);
+  const gatesPath = resolveGatesPath(options.gates, csvPath);
+  const loadedGates = gatesPath ? loadGates(gatesPath) : { path: "", spec: null };
 
   const loaded = loadGold(csvPath);
   if (loaded.rows.length === 0) {
     throw new Error(`No usable labeled rows in ${csvPath}. Need columns: text, issue, sentiment, urgency.`);
+  }
+  if (failOnGate && !loadedGates.spec) {
+    throw new Error(
+      "--fail-on-gate requires a gates file. Pass --gates <path>, set EVAL_GATES_FILE, or score eval/synthetic-heldout.smoke.csv (uses eval/gates.smoke.json).",
+    );
   }
 
   console.log("Multi-head live-API eval");
@@ -342,6 +448,9 @@ export async function runEval(options) {
   console.log(`  api                 ${apiBase}`);
   console.log(`  chunk size          ${chunkSize}`);
   console.log(`  abstain threshold   ${abstainThreshold}  (issue confidence; same default as lib/trust.ts ISSUE_ABSTAIN_THRESHOLD)`);
+  console.log(`  gates               ${loadedGates.path || "(none)"}`);
+  console.log(`  fail-on-gate        ${failOnGate ? "yes" : "no"}`);
+  console.log(`  include text        ${includeText ? "yes (message snippets in logs/JSON)" : "no (redacted; pass --include-text)"}`);
 
   printSection("health");
   const health = await fetchJson(`${apiBase}/health`, { method: "GET" }, HEALTH_TIMEOUT_MS);
@@ -380,10 +489,46 @@ export async function runEval(options) {
   const issueReport = scoreHead(issueGold, issuePred);
   const sentReport = scoreHead(sentGold, sentPred);
   const urgReport = scoreHead(urgGold, urgPred);
+  const urgencyOps = scoreUrgencyOps(urgGold, urgPred);
+
+  const emergencyMissRows = [];
+  const falseEmergencyRows = [];
+  for (let i = 0; i < loaded.rows.length; i++) {
+    const gold = normalizeLabel(urgGold[i]);
+    const pred = normalizeLabel(urgPred[i]);
+    const item = {
+      id: loaded.rows[i].id,
+      gold: urgGold[i],
+      pred: urgPred[i],
+    };
+    if (includeText) item.text = loaded.rows[i].text.slice(0, 96);
+    if (gold === "emergency" && pred !== "emergency") emergencyMissRows.push(item);
+    if (gold !== "emergency" && pred === "emergency") falseEmergencyRows.push(item);
+  }
 
   printHeadReport("issue", issueReport);
   printHeadReport("sentiment", sentReport);
   printHeadReport("urgency", urgReport);
+  printUrgencyOps(urgencyOps);
+
+  printSection("urgency misses / false emergencies (first 8 each)");
+  const listUrgency = (title, items) => {
+    console.log(`  ${title}  n=${items.length}`);
+    if (items.length === 0) {
+      console.log("    (none)");
+      return;
+    }
+    for (const item of items.slice(0, 8)) {
+      console.log(`    [${item.id}] gold=${item.gold}  pred=${item.pred}`);
+      if (includeText && item.text) console.log(`         ${item.text}`);
+    }
+    if (items.length > 8) console.log(`    … ${items.length - 8} more`);
+  };
+  listUrgency("emergency misses (gold emergency, not predicted emergency)", emergencyMissRows);
+  listUrgency("false emergencies (gold not emergency, predicted emergency)", falseEmergencyRows);
+  if (!includeText) {
+    console.log("  message text redacted (pass --include-text for local debugging; leave off in CI with private gold)");
+  }
 
   printHistogram("issue confidence histogram", histogram(issueConf), issueConf.length);
   printHistogram("sentiment confidence histogram", histogram(sentConf), sentConf.length);
@@ -450,8 +595,8 @@ export async function runEval(options) {
       gold: loaded.rows[i].issue,
       pred: predictions[i].issue,
       confidence: conf,
-      text: loaded.rows[i].text.slice(0, 96),
     };
+    if (includeText) item.text = loaded.rows[i].text.slice(0, 96);
     if (low && ok) lowCorrect.push(item);
     else if (low && !ok) lowIncorrect.push(item);
     else if (!low && ok) highCorrect.push(item);
@@ -471,13 +616,16 @@ export async function runEval(options) {
     for (const item of items.slice(0, limit)) {
       const c = item.confidence === null ? "n/a" : fmt(item.confidence);
       console.log(`    [${item.id}] conf=${c}  gold=${item.gold}  pred=${item.pred}`);
-      console.log(`         ${item.text}`);
+      if (includeText && item.text) console.log(`         ${item.text}`);
     }
     if (items.length > limit) console.log(`    … ${items.length - limit} more`);
   };
   listFlags("LOW confidence, INCORRECT", lowIncorrect);
   listFlags("LOW confidence, CORRECT (abstain would hide a good guess)", lowCorrect);
   listFlags("HIGH confidence, INCORRECT", highIncorrect);
+  if (!includeText) {
+    console.log("  message text redacted (pass --include-text for local debugging; leave off in CI with private gold)");
+  }
 
   const mean = (arr) => (arr.length === 0 ? null : arr.reduce((s, x) => s + x, 0) / arr.length);
   const correctConfs = [];
@@ -492,6 +640,15 @@ export async function runEval(options) {
   console.log(`  mean conf | correct    ${correctConfs.length ? fmt(mean(correctConfs)) : "n/a"}  (n=${correctConfs.length})`);
   console.log(`  mean conf | incorrect  ${incorrectConfs.length ? fmt(mean(incorrectConfs)) : "n/a"}  (n=${incorrectConfs.length})`);
 
+  const gateEval = loadedGates.spec
+    ? evaluateGates(loadedGates.spec, {
+        health,
+        nGold: loaded.rows.length,
+        nPred: predictions.length,
+        urgencyOps,
+      })
+    : null;
+
   const report = {
     generatedAt: new Date().toISOString(),
     csv: csvPath,
@@ -499,11 +656,22 @@ export async function runEval(options) {
     abstainThreshold,
     n: loaded.rows.length,
     skipped: loaded.skipped,
+    includeText,
     health,
     heads: {
       issue: issueReport,
       sentiment: sentReport,
-      urgency: urgReport,
+      urgency: {
+        ...urgReport,
+        emergencyRecall: urgencyOps.emergencyRecall,
+        falseEmergencyRate: urgencyOps.falseEmergencyRate,
+        quadraticWeightedKappa: urgencyOps.quadraticWeightedKappa,
+      },
+    },
+    urgencyOps: {
+      ...urgencyOps,
+      emergencyMissRows: jsonRows(emergencyMissRows, includeText),
+      falseEmergencyRows: jsonRows(falseEmergencyRows, includeText),
     },
     issueConfidence: {
       histogram: histogram(issueConf),
@@ -515,13 +683,22 @@ export async function runEval(options) {
     },
     abstainSweep: sweep,
     flags: {
-      lowCorrect,
-      lowIncorrect,
-      highCorrect: highCorrect.map(({ text, ...rest }) => rest),
-      highIncorrect,
+      lowCorrect: jsonRows(lowCorrect, includeText),
+      lowIncorrect: jsonRows(lowIncorrect, includeText),
+      highCorrect: jsonRows(highCorrect, includeText),
+      highIncorrect: jsonRows(highIncorrect, includeText),
     },
-    note: "Synthetic smoke CSVs are not production gold. Quote numbers only from an actual run against the live API.",
+    gates: {
+      file: loadedGates.path || null,
+      failOnGate,
+      spec: loadedGates.spec,
+      passed: gateEval ? gateEval.passed : null,
+      results: gateEval ? gateEval.results : [],
+    },
+    note: "Synthetic smoke CSVs are not production gold. Smoke gate floors are harness-health thresholds, not model-quality claims. Quote numbers only from an actual run against the live API. Message text is omitted from this report unless --include-text / EVAL_INCLUDE_TEXT=1.",
   };
+
+  printGates(gateEval, loadedGates.path, failOnGate);
 
   if (options.json) {
     const jsonPath = resolve(options.json);
@@ -536,13 +713,25 @@ export async function runEval(options) {
   console.log(`  issue      acc=${fmt(issueReport.accuracy)}  macro-F1=${fmt(issueReport.macroF1)}`);
   console.log(`  sentiment  acc=${fmt(sentReport.accuracy)}  macro-F1=${fmt(sentReport.macroF1)}`);
   console.log(`  urgency    acc=${fmt(urgReport.accuracy)}  macro-F1=${fmt(urgReport.macroF1)}`);
+  console.log(
+    `  urgency    emergency-recall=${urgencyOps.emergencyRecall === null ? "n/a" : fmt(urgencyOps.emergencyRecall)}  false-emergency=${urgencyOps.falseEmergencyRate === null ? "n/a" : fmt(urgencyOps.falseEmergencyRate)}  q-κ=${urgencyOps.quadraticWeightedKappa === null ? "n/a" : fmt(urgencyOps.quadraticWeightedKappa)}`,
+  );
   const atDefault = sweep.find((s) => s.threshold === abstainThreshold) ?? sweep.find((s) => s.threshold === 0.6);
   if (atDefault) {
     console.log(
       `  abstain@${atDefault.threshold.toFixed(2)}  rate=${pct(atDefault.abstain, loaded.rows.length)}  acc on accepted=${atDefault.accuracyAccepted === null ? "n/a" : fmt(atDefault.accuracyAccepted)}`,
     );
   }
+  if (gateEval) {
+    console.log(`  gates      ${gateEval.passed ? "PASS" : "FAIL"}  (${gateEval.results.filter((r) => !r.ok).length} failed of ${gateEval.results.length})`);
+  }
   console.log("");
+
+  if (failOnGate && gateEval && !gateEval.passed) {
+    const failed = gateEval.results.filter((r) => !r.ok).map((r) => r.id);
+    throw new Error(`Eval gates failed: ${failed.join(", ")}`);
+  }
+
   return report;
 }
 

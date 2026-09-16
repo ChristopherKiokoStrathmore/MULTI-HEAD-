@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "eval": "node eval/run.mjs",
-    "eval:smoke": "node eval/run.mjs --csv eval/synthetic-heldout.smoke.csv"
+    "eval:smoke": "node eval/run.mjs --csv eval/synthetic-heldout.smoke.csv",
+    "eval:smoke:ci": "node eval/run.mjs --csv eval/synthetic-heldout.smoke.csv --json eval-smoke-report.json --fail-on-gate --gates eval/gates.smoke.json",
+    "test": "node --test eval/*.test.mjs"
   },
   "dependencies": {
     "next": "16.3.5",

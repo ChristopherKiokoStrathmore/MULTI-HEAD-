@@ -22,3 +22,6 @@ s17,"My home 5G router has a red light and the WiFi SSID is not broadcasting.",R
 s18,"The indoor 5G CPE keeps dropping WiFi every few minutes since this morning.",Router_WiFi_5G,negative,medium
 s19,"My SIM is damaged and I cannot receive SMS. I need a replacement on the same number.",SIM_Line_Services,negative,emergency
 s20,"Please bar this line immediately, I lost the handset on the bus this afternoon.",SIM_Line_Services,negative,emergency
+# Explicit de-escalation prototypes (synthetic). Known live failure mode: soft negatives can be over-called as emergency.
+s21,"Data bundle imeisha but si urgent — I can buy another pack tomorrow.",Data_Bundle_Problems,negative,low
+s22,"The WiFi dropped once this morning but this is not an emergency; no callback needed.",Router_WiFi_5G,not_negative,low

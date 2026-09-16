@@ -64,7 +64,9 @@ Other scripts:
 ```bash
 npm run build         # production build
 npm run start         # serve the production build locally
+npm test              # eval harness unit tests (metrics/gates, no live API)
 npm run eval:smoke    # score the synthetic fixture against the live API
+npm run eval:smoke:ci # same as CI: JSON report + --fail-on-gate
 npm run eval -- --csv /path/to/heldout.csv   # real labeled eval (see eval/README.md)
 ```
 
@@ -72,11 +74,42 @@ npm run eval -- --csv /path/to/heldout.csv   # real labeled eval (see eval/READM
 
 `eval/` scores a labeled CSV against the **live** Modal API (`POST /predict_batch`). No local GPU.
 
-- Schema, flags, and how to swap in a real held-out file: **[eval/README.md](eval/README.md)**
+- Schema, flags, gates, and how to swap in a real held-out file: **[eval/README.md](eval/README.md)**
 - Fixture: `eval/synthetic-heldout.smoke.csv` — **synthetic smoke data, not production gold**, no customer PII
+- Smoke floors: `eval/gates.smoke.json` — **harness-health** (API up, scoring finished, no total emergency collapse). Not a model-quality claim.
 - Default abstain threshold is `0.6` (`ISSUE_ABSTAIN_THRESHOLD` in `lib/trust.ts`). Below that, the UI shows a needs-review state instead of treating the issue head as auto-routable.
 
+Urgency reporting includes accuracy / macro-F1 plus **emergency recall**, **false-emergency rate**, and quadratic-weighted Cohen's kappa on `{low, medium, emergency}`.
+
 API URL for eval (first non-empty wins): `--api-url`, `MULTIHEAD_API_URL`, `NEXT_PUBLIC_API_URL`, then the known Modal base. The Next.js app itself still reads **only** `NEXT_PUBLIC_API_URL`.
+
+Improving urgency via retrain requires the **Modal / training codebase** (out of this repo). Re-run this harness against the new deployment.
+
+---
+
+## CI (GitHub Actions)
+
+Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+
+On every push and pull request to `master` or `main`, two jobs run **in parallel** (neither `needs:` the other):
+
+| Job | What | Modal |
+| --- | --- | --- |
+| **Frontend build** | `npm ci` → `npm test` → `npm run build` | no |
+| **Live eval smoke (Modal)** | `npm run eval:smoke:ci`, upload `eval-smoke-report.json` | yes |
+
+Eval is a first-class job with `continue-on-error: false`. A Modal outage or a failed smoke gate makes the workflow red, but the frontend job can still pass on its own. Whether that blocks merge is a **branch-protection** choice: require both checks on `master` to treat urgency collapse as blocking, or require only the build job if API downtime must not block frontend-only PRs.
+
+Local equivalents of CI:
+
+```bash
+npm ci
+npm test
+npm run build
+npm run eval:smoke:ci    # needs network egress to Modal; cold start 40–120s
+```
+
+Private human-gold in CI later: put the CSV in a GitHub Actions secret or private download, write it to a runner-local path, point `node eval/run.mjs --csv … --fail-on-gate --gates <your-floors.json>`. **Do not commit real customer data.** Details in [eval/README.md](eval/README.md).
 
 ---
 
@@ -211,9 +244,13 @@ In CSV mode, rows already classified before a failure are kept and stay download
 │   ├── urgency.ts            # urgency label → colour mapping
 │   └── trust.ts              # ISSUE_ABSTAIN_THRESHOLD (0.6) and abstain helper
 ├── eval/
-│   ├── README.md             # CSV schema + how to run a real held-out eval
+│   ├── README.md             # CSV schema, gates, CI, private gold pattern
 │   ├── run.mjs               # live-API scoring script (no GPU)
+│   ├── urgency-ops.mjs       # emergency recall / false-emergency / kappa / gates
+│   ├── urgency-ops.test.mjs  # unit tests (no live API)
+│   ├── gates.smoke.json      # explicit smoke floors (harness-health, not quality)
 │   └── synthetic-heldout.smoke.csv  # synthetic smoke fixture, not gold
+├── .github/workflows/ci.yml  # frontend build + live eval smoke
 ├── sample-messages.csv       # test file for CSV mode
 ├── .env.example
 ├── next.config.ts

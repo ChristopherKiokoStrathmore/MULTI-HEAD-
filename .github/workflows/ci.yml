@@ -1,0 +1,93 @@
+# Frontend build + live Modal eval smoke.
+# Jobs are independent: a Modal outage fails eval-smoke without blocking the
+# build job itself. Default is continue-on-error: false on both jobs, so the
+# workflow as a whole is red when either fails. Branch protection decides
+# whether eval-smoke is required to merge (see eval/README.md).
+
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_PUBLIC_API_URL: https://thechriskioko--threehead-serve-server-fastapi-app.modal.run
+  MULTIHEAD_API_URL: https://thechriskioko--threehead-serve-server-fastapi-app.modal.run
+
+jobs:
+  build:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Eval harness unit tests (no live API)
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+  eval-smoke:
+    name: Live eval smoke (Modal)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Fail the job on gate/API errors. Do not mark this optional here.
+    # If you want frontend-only PRs to merge during a Modal outage, leave
+    # this check *optional* in GitHub branch protection and keep `build` required.
+    continue-on-error: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Score synthetic smoke against live API
+        env:
+          EVAL_FAIL_ON_GATE: "1"
+          # Do not set EVAL_INCLUDE_TEXT — reports/logs would then contain message snippets.
+        run: npm run eval:smoke:ci
+
+      - name: Upload eval JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-smoke-report
+          path: eval-smoke-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      # Private human-gold later (do NOT commit customer messages):
+      # 1. Add repo secret EVAL_HELD_OUT_CSV (file contents) and optional
+      #    EVAL_HELD_OUT_GATES, or download the CSV from private storage.
+      # 2. Write it to a runner-local path and run:
+      #      node eval/run.mjs --csv /tmp/heldout.csv --json eval-heldout-report.json \
+      #        --fail-on-gate --gates /tmp/heldout-gates.json
+      #    Do not pass --include-text (customer message snippets in logs/artifacts).
+      # 3. Upload eval-heldout-report.json; delete the CSV at end of job.
