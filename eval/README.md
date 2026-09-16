@@ -92,6 +92,7 @@ node eval/run.mjs --csv /path/to/real-heldout.csv --json eval-report.json
 --json report.json           machine-readable copy of the printed metrics
 --gates path/to/gates.json   explicit pass/fail thresholds
 --fail-on-gate               exit 1 if those thresholds fail
+--include-text               opt in to message snippets in logs/JSON (off by default)
 ```
 
 API URL resolution (first non-empty wins): `--api-url`, then
@@ -115,9 +116,14 @@ the host. The eval default exists so `npm run eval:smoke` works without a
 - Off-diagonal **confusion** pairs (gold → predicted)
 - Issue and sentiment **confidence histograms** (0.1-wide bins)
 - **Abstain rate** and accuracy-on-accepted at thresholds 0.40–0.80
-- Low-confidence **correct vs incorrect** rows at `--abstain-threshold`
+- Low-confidence **correct vs incorrect** row **ids** at `--abstain-threshold`
   (default `0.6`, the same named constant as `ISSUE_ABSTAIN_THRESHOLD` in
   `lib/trust.ts`)
+
+Message **text is omitted** from stdout and JSON by default so GitHub Actions
+logs/artifacts stay safe for a later private-gold job. Pass `--include-text`
+(or `EVAL_INCLUDE_TEXT=1`) only for local debugging. Do **not** enable that
+flag in CI against customer messages.
 
 On a 10-class issue head, a top softmax around **0.5** is often not enough to
 trust. The UI abstains below `0.6`; use this harness to decide whether that
@@ -139,10 +145,10 @@ API, an incomplete score, or a total urgency collapse:
 
 | Check | Smoke default | Meaning |
 | --- | --- | --- |
-| `requireHealthOk` | true | `GET /health` reports `status: ok` |
+| `requireHealthOk` | true | `GET /health` reports `status: "ok"` (case-insensitive; `{ok: true}` or `healthy`/`ready` are not accepted) |
 | `requireModelLoaded` | true | health includes `model_loaded: true` |
 | `requireCompleteScoring` | true | every gold row got a prediction |
-| `minScoredRows` | 1 | at least one labeled row was scored |
+| `minScoredRows` | 1 | at least this many **predictions** were returned (`nPred`; does not use gold count) |
 | `urgency.minEmergencyRecall` | 0.01 | fail if gold emergencies exist and recall is 0 |
 | `urgency.maxFalseEmergencyRate` | 0.99 | fail if non-emergency gold exists and 100% are predicted emergency |
 
@@ -184,7 +190,9 @@ own. **Branch protection** is where you choose the merge policy:
   frontend-only PRs. Leave eval-smoke visible but optional.
 
 The eval job has a 20-minute timeout (cold start ~40–120s). It uploads
-`eval-smoke-report.json` as an artifact even when gates fail.
+`eval-smoke-report.json` as an artifact even when gates fail. That JSON
+contains row **ids** and labels, not message text, unless you pass
+`--include-text` (CI does not).
 
 ### Pointing a private human-gold CSV at CI later
 
@@ -212,6 +220,8 @@ rm -f /tmp/heldout.csv
 ```
 
 5. Optional env: `EVAL_GATES_FILE`, `MULTIHEAD_API_URL`.
+   Do **not** set `EVAL_INCLUDE_TEXT` or pass `--include-text` in this job —
+   logs and the uploaded JSON would then contain customer message snippets.
 
 The smoke fixture includes a couple of **synthetic** explicit-de-escalation
 rows (e.g. “si urgent”) so false-emergency rate is exercised. Smoke floors

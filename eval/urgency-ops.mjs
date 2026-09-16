@@ -105,11 +105,10 @@ export function scoreUrgencyOps(goldLabels, predLabels) {
   };
 }
 
+/** True only when health.status is "ok" (case-insensitive). Matches the live Modal contract. */
 export function healthIsOk(health) {
   if (!health || typeof health !== "object") return false;
-  if (health.ok === true) return true;
-  const status = String(health.status ?? "").trim().toLowerCase();
-  return status === "ok" || status === "healthy" || status === "ready";
+  return String(health.status ?? "").trim().toLowerCase() === "ok";
 }
 
 function gateResult(id, ok, detail) {
@@ -160,8 +159,8 @@ export function evaluateGates(gates, ctx) {
     results.push(
       gateResult(
         "scoring.minRows",
-        nGold >= spec.minScoredRows,
-        `n=${nGold} (min ${spec.minScoredRows})`,
+        nPred >= spec.minScoredRows,
+        `scored ${nPred} (min ${spec.minScoredRows})`,
       ),
     );
   }
