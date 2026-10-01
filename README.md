@@ -1,5 +1,7 @@
 # Multi-head triage for code-switched customer-care messages
 
+![Problem, method, and result: repo sample messages in a mixed queue, one shared checkpoint with issue, sentiment, and urgency heads, then emergency at the front of the queue and low-confidence issue labels held for review.](assets/hero.png)
+
 [![CI](https://github.com/ChristopherKiokoStrathmore/MULTI-HEAD-/actions/workflows/ci.yml/badge.svg)](https://github.com/ChristopherKiokoStrathmore/MULTI-HEAD-/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -10,6 +12,12 @@ Live demo: [https://multi-head.vercel.app](https://multi-head.vercel.app)
 ![Live demo on multi-head.vercel.app after classifying the on-page Reversal example](docs/live-demo.png)
 
 The screenshot was captured with headless Playwright against the live site on 1 October 2026, using the Reversal example already on the page. It is a picture of the demo, not an evaluation table.
+
+## Demo
+
+![Recording of the live demo. The Reversal example is filled in, classified, and the page shows issue, sentiment, and urgency.](assets/demo.gif)
+
+Recorded in the browser on the live site on 1 October 2026, using the Reversal example already on the page. It is a picture of the demo, not an evaluation table.
 
 ## Problem
 
@@ -42,6 +50,12 @@ The paper title names a multi-task transformer. What this repository and the liv
 ```
 
 That payload is from `https://thechriskioko--threehead-serve-server-fastapi-app.modal.run/health`. The checkpoint path is the service's own string. The weights are not in this repo.
+
+![From the browser to three heads. This repo's Next.js page calls GET /health, POST /predict, and POST /predict_batch. The live service serves joint_big_model.pt on CUDA as one checkpoint with issue, sentiment, and urgency heads. Issue confidence under 0.6, or missing, is held for a person.](assets/architecture.png)
+
+![Issue, sentiment, and urgency labels the live service reports. The ten issue names are the classes listed in eval/README.md, printed the way the demo shows them.](assets/labels.png)
+
+The issue names above are the display form from `lib/format.ts`: underscores become spaces. Sentiment and urgency match `GET /health` and [eval/README.md](eval/README.md).
 
 Human review sits on the issue head. `ISSUE_ABSTAIN_THRESHOLD` in `lib/trust.ts` is `0.6`. Below that threshold, or when issue confidence is missing, the UI shows **Needs review / do not auto-route** and still shows the top guess. A score of exactly 0.6 is accepted. CSV rows use the same rule (`issue_needs_review` in the download). The live API does not return a second-best issue, so the UI does not invent one.
 
@@ -141,6 +155,12 @@ In CSV mode, rows classified before a failure are kept and stay downloadable.
 
 ```
 .
+├── assets/
+│   ├── architecture.png      # browser, checkpoint, three heads
+│   ├── demo.gif              # live Reversal classification
+│   ├── hero.png              # problem, method, result
+│   ├── labels.png            # issue, sentiment, and urgency names
+│   └── social-preview.png    # 1280x640 social card
 ├── app/
 │   ├── globals.css           # Tailwind v4 entry
 │   ├── layout.tsx            # root layout
