@@ -44,6 +44,16 @@ jobs:
       - name: Eval harness unit tests (no live API)
         run: npm test
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Notebook metric tests (no model download)
+        run: |
+          python -m pip install --disable-pip-version-check numpy
+          python -m unittest notebooks.test_metrics -v
+
       - name: Production build
         run: npm run build
 
