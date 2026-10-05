@@ -177,7 +177,7 @@ On push and pull request to `master` or `main`, two **independent** jobs run:
 
 | Job | Command | Needs Modal? |
 | --- | --- | --- |
-| `Frontend build` | `npm ci`, `npm test`, `npm run build` | no |
+| `Frontend build` | `npm ci`, `npm test`, notebook metric tests, `npm run build` | no |
 | `Live eval smoke (Modal)` | `npm run eval:smoke:ci` | yes (public `/health` + `/predict_batch`) |
 
 Eval uses `continue-on-error: false`, so a Modal outage or a failed smoke gate
@@ -234,3 +234,7 @@ This repository is UI + live-API eval only. Improving urgency (retrain,
 loss weights, new labels) happens in the **Modal / training codebase**, then
 this harness is pointed at the new deployment. Do not expect a frontend PR
 to change model behavior.
+
+## Local notebooks
+
+`notebooks/` repeats these metric definitions in Python for a frozen AfroXLMR comparison and an emoji-tokenization audit. It scores the labeled file you pass in, not a second hidden split, and it does not replace this harness. Paths and the privacy rule are in [notebooks/README.md](../notebooks/README.md).
