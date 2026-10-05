@@ -13,3 +13,17 @@ npm-debug.log*
 eval-smoke-report.json
 eval-heldout-report.json
 eval-report.json
+
+__pycache__/
+*.pyc
+
+# Local customer exports, checkpoints, and notebook outputs. Do not commit.
+*.xlsx
+*.xls
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+/data/
+notebooks/outputs/
+**/.ipynb_checkpoints/

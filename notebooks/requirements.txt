@@ -1,0 +1,11 @@
+# Local notebooks only. The Next.js app and eval/ harness do not import these.
+# CI installs numpy on its own for notebooks/test_metrics.py. It does not download a model.
+numpy>=1.26
+torch>=2.2
+transformers>=4.44
+ipykernel>=6.29
+jupyter>=1.1
+# Optional: xlsx gold files, and sklearn's logistic regression instead of the numpy fallback.
+pandas>=2.2
+openpyxl>=3.1
+scikit-learn>=1.4

@@ -190,7 +190,8 @@ function emptyCounts() {
   return { tp: 0, fp: 0, fn: 0, support: 0 };
 }
 
-function scoreHead(goldLabels, predLabels) {
+/** Exported so notebooks/test_metrics.py can check the Python port. Behavior is unchanged. */
+export function scoreHead(goldLabels, predLabels) {
   const n = goldLabels.length;
   let correct = 0;
   const confusion = new Map(); // gold -> pred -> count

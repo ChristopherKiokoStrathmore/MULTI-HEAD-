@@ -121,6 +121,10 @@ Urgency reporting includes accuracy and macro-F1, plus emergency recall, false-e
 
 The eval API base is the first non-empty value among `--api-url`, `MULTIHEAD_API_URL`, `NEXT_PUBLIC_API_URL`, and the known Modal host. The Next.js app still reads only `NEXT_PUBLIC_API_URL`.
 
+## Notebooks
+
+[notebooks/README.md](notebooks/README.md) is a local Python path for two checks this Node app does not run: a frozen `Davlan/afro-xlmr-large` baseline against the deployed three-head service, and an emoji-tokenization audit of that tokenizer. The notebooks use the same label columns and the same metric definitions as [eval/README.md](eval/README.md). They do not add training code, and they do not replace `npm run eval`. Customer spreadsheets and `.pt` weights stay out of git.
+
 ## CI
 
 Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
@@ -129,7 +133,7 @@ On every push and pull request to `master` or `main`, two jobs run in parallel:
 
 | Job | What | Calls Modal |
 | --- | --- | --- |
-| Frontend build | `npm ci`, `npm test`, `npm run build` | no |
+| Frontend build | `npm ci`, `npm test`, notebook metric tests, `npm run build` | no |
 | Live eval smoke (Modal) | `npm run eval:smoke:ci`, then upload `eval-smoke-report.json` | yes |
 
 A Modal outage or a failed smoke gate fails the eval job. The frontend job can still pass on its own. Branch protection chooses whether both checks are required to merge.
@@ -174,6 +178,7 @@ In CSV mode, rows classified before a failure are kept and stay downloadable.
 │   ├── examples.ts
 │   └── urgency.ts
 ├── eval/                     # live-API scorer, smoke fixture, smoke gates
+├── notebooks/                # local baselines; see notebooks/README.md
 ├── docs/
 │   ├── DEPLOY.md             # Vercel, CORS, cold starts
 │   └── live-demo.png         # screenshot of the live demo
